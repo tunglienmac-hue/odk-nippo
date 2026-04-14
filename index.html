@@ -1,0 +1,2257 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>日報管理 — ODK</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans JP','Meiryo',sans-serif;background:#f5f5f5;font-size:11px}
+#loginScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a1a 0%,#2d2d2d 50%,#1a1a1a 100%);z-index:9999;overflow:hidden}
+#loginScreen::before{content:'';position:absolute;top:-20%;left:-10%;width:55%;height:140%;background:linear-gradient(135deg,#e8620a,#f47c20);transform:skewX(-8deg);z-index:0;opacity:.92}
+#loginScreen::after{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.06) 1px,transparent 1px);background-size:28px 28px;z-index:0}
+.login-brand{position:relative;z-index:1;width:340px;padding:48px 40px;color:#fff;display:flex;flex-direction:column;justify-content:center;gap:20px}
+.brand-tag{font-size:10px;font-weight:700;letter-spacing:4px;color:rgba(255,255,255,.7)}
+.brand-name-en{font-size:26px;font-weight:900;letter-spacing:3px;line-height:1;color:#fff}
+.brand-divider{width:48px;height:3px;background:#fff;border-radius:2px;opacity:.6}
+.brand-tagline{font-size:11px;color:rgba(255,255,255,.75);line-height:1.8}
+.brand-spread{font-size:28px;font-weight:900;letter-spacing:6px;color:rgba(255,255,255,.15);margin-top:auto}
+.odk-logo{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.odk-logo-box{background:#fff;color:#e8620a;font-size:18px;font-weight:900;letter-spacing:2px;padding:6px 12px;border-radius:2px;line-height:1}
+.odk-logo-sub{font-size:9px;color:rgba(255,255,255,.6);letter-spacing:1px;line-height:1.6}
+.login-form-wrap{position:relative;z-index:1;background:#fff;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.4);border-radius:0 4px 4px 0;overflow:hidden;animation:slideIn .4s cubic-bezier(.4,0,.2,1)}
+@keyframes slideIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes savePulse{0%,100%{box-shadow:0 4px 14px rgba(232,98,10,.5)}50%{box-shadow:0 4px 20px rgba(232,98,10,.9)}}
+.form-header{background:#1a1a1a;padding:24px 28px 20px;border-bottom:3px solid #e8620a}
+.form-header h2{font-size:14px;font-weight:900;letter-spacing:3px;color:#fff;margin-bottom:4px}
+.form-header p{font-size:9px;color:#888;letter-spacing:2px}
+.form-body{padding:28px 28px 24px}
+.lf{margin-bottom:18px}
+.lf label{display:block;font-size:9px;font-weight:700;letter-spacing:2px;color:#666;margin-bottom:6px}
+.lf input{width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;background:#fafafa;font-family:inherit;font-size:13px;outline:none;transition:all .15s;border-radius:2px}
+.lf input:focus{border-color:#e8620a;background:#fff;box-shadow:0 0 0 3px rgba(232,98,10,.1)}
+.lbtn{width:100%;padding:12px;background:linear-gradient(135deg,#e8620a,#f47c20);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:3px;cursor:pointer;border-radius:2px;transition:all .2s;box-shadow:0 4px 14px rgba(232,98,10,.4);margin-top:4px}
+.lbtn:hover{background:linear-gradient(135deg,#d05508,#e8620a);transform:translateY(-1px)}
+.lerr{color:#c0392b;font-size:10px;margin-top:10px;text-align:center;display:none;padding:7px;background:#fff5f5;border:1px solid #fcc;border-radius:2px}
+.pw-field{position:relative}
+.pw-field input{padding-right:42px!important}
+.pw-show-btn{position:absolute;right:0;top:0;bottom:0;width:40px;display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;color:#bbb;font-size:15px}
+.pw-show-btn:hover{color:#e8620a}
+.page{display:none}
+.page.active{display:block}
+.topbar{background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:38px;position:sticky;top:0;z-index:600;border-bottom:3px solid #e8620a}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-logo{background:#e8620a;color:#fff;font-size:11px;font-weight:900;letter-spacing:2px;padding:3px 8px;border-radius:1px}
+.tb-title{font-size:12px;font-weight:700;color:#fff;letter-spacing:1px}
+.tb-affil{position:absolute;left:50%;transform:translateX(-50%);font-size:12px;font-weight:900;letter-spacing:3px;padding:3px 14px;border-radius:2px;pointer-events:none}
+.tb-affil-odks{background:#1565c0;color:#fff;border:1.5px solid #90caf9}
+.tb-affil-odk{background:#2e7d32;color:#fff;border:1.5px solid #81c784}
+.tb-affil-admin{background:#e8620a;color:#fff;border:1.5px solid #f47c20}
+.tb-r{display:flex;align-items:center;gap:4px}
+#tbUser,#volUserBadge{font-size:9px;color:#aaa;margin-right:4px}
+.tbb{padding:3px 10px;background:transparent;border:1px solid #444;color:#ccc;font-family:inherit;font-size:9px;font-weight:700;cursor:pointer;border-radius:1px;transition:all .15s}
+#bSave.save-active,#bSave2.save-active{background:linear-gradient(135deg,#e8620a,#f47c20)!important;border-color:#e8620a!important;color:#fff!important;box-shadow:0 4px 14px rgba(232,98,10,.6)!important;transform:none;animation:savePulse 1.5s ease-in-out infinite}
+#bVolSave.save-active{background:linear-gradient(135deg,#e8620a,#f47c20)!important;border-color:#e8620a!important;color:#fff!important;box-shadow:0 4px 14px rgba(232,98,10,.6)!important;animation:savePulse 1.5s ease-in-out infinite}
+.tbb:hover{background:#e8620a;border-color:#e8620a;color:#fff}
+.tbb-green{border-color:#2e7d32!important;color:#81c784!important}
+.tbb-green:hover{background:#2e7d32!important;border-color:#2e7d32!important;color:#fff!important}
+.tbb-blue{border-color:#1565c0!important;color:#90caf9!important}
+.tbb-blue:hover{background:#1565c0!important;border-color:#1565c0!important;color:#fff!important}
+.tbb-purple{border-color:#6a1b9a!important;color:#ce93d8!important}
+.tbb-purple:hover{background:#6a1b9a!important;border-color:#6a1b9a!important;color:#fff!important}
+.tbb-teal{border-color:#00695c!important;color:#80cbc4!important}
+.tbb-teal:hover{background:#00695c!important;border-color:#00695c!important;color:#fff!important}
+.ctrl{background:#f8f8f8;border-bottom:1px solid #e0e0e0;padding:5px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ctrl label{font-size:10px;font-weight:700;color:#555}
+.ctrl input[type=date]{padding:4px 7px;border:1px solid #ccc;font-family:inherit;font-size:10px;background:#fff;outline:none;border-radius:1px}
+.ctrl input[type=date]:focus{border-color:#e8620a}
+.dnav-btn{padding:3px 7px;background:#f5f5f5;border:1px solid #ccc;font-family:inherit;font-size:10px;cursor:pointer;border-radius:1px}
+.dnav-btn:hover{background:#e8620a;color:#fff;border-color:#e8620a}
+.emp-sel-wrap{position:relative;display:inline-block}
+.emp-sel-btn{display:flex;align-items:center;gap:6px;padding:4px 9px;border:1px solid #ccc;background:#fff;font-family:inherit;font-size:10px;cursor:pointer;border-radius:1px;min-width:170px}
+.emp-sel-btn:hover{border-color:#e8620a}
+.emp-sel-btn .sel-name{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.emp-sel-btn .sel-arrow{color:#aaa;font-size:8px}
+.emp-dropdown{position:absolute;top:100%;left:0;z-index:500;background:#fff;border:1.5px solid #e8620a;border-radius:2px;box-shadow:0 8px 24px rgba(0,0,0,.18);min-width:270px;display:none}
+.emp-dropdown.open{display:block}
+.emp-drop-search{padding:6px 8px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:5px}
+.emp-drop-search input{flex:1;border:1px solid #e0e0e0;padding:5px 8px;font-family:inherit;font-size:10px;outline:none;border-radius:2px}
+.emp-drop-search input:focus{border-color:#e8620a}
+.emp-drop-info{padding:3px 10px;font-size:9px;color:#aaa;background:#fafafa;border-bottom:1px solid #eee}
+.emp-drop-list{max-height:240px;overflow-y:auto}
+.emp-drop-list::-webkit-scrollbar{width:4px}
+.emp-drop-list::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
+.emp-drop-item{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer}
+.emp-drop-item:hover{background:#fff8f4}
+.emp-drop-item.selected{background:#fff3e0}
+.edi-id{font-size:9px;color:#aaa;font-family:monospace;min-width:56px}
+.edi-name{font-size:10px;font-weight:600;flex:1}
+.edi-badge{font-size:8px;padding:1px 6px;border-radius:8px}
+.edi-badge-admin{background:#fff3e0;color:#e8620a;border:1px solid #f47c20}
+.edi-badge-emp{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+.emp-drop-empty{padding:14px;text-align:center;color:#aaa;font-size:10px}
+.paper-outer{padding:12px;overflow:auto}
+.paper{background:#fff;border:1.5px solid #ddd;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.ph{display:flex;align-items:center;border-bottom:2px solid #1a1a1a;padding:4px 10px;gap:12px;font-size:9px}
+.ph-item .pl{color:#888;font-size:8px}
+.ph-item .pv{font-weight:700}
+.sheet{width:100%;border-collapse:collapse;table-layout:fixed}
+.td-grp{background:#1a1a1a;color:#fff;font-size:10px;font-weight:900;text-align:center;padding:4px 2px;border:1px solid #333;overflow:hidden}
+.td-task{background:#fff;color:#000;font-size:9px;font-weight:600;text-align:center;padding:3px 1px;border:1px solid #ccc;white-space:nowrap;overflow:hidden}
+.td-no{background:#f0f0f0;color:#555;font-size:9px;font-weight:700;text-align:center;padding:2px 1px;border:1px solid #ddd}
+.td-inp{background:#fff;border:1px solid #ddd;padding:0;height:24px}
+.td-inp:hover{background:#fff8f4}
+.sep-r{border-right:3px solid #555!important}
+.sep-t{border-right:3px solid #bbb!important}
+.inp{width:100%;height:23px;border:none;background:transparent;text-align:center;font-family:monospace;font-size:9px;font-weight:700;color:#000;outline:none;padding:0}
+.inp:focus{background:#fff3ec}
+.inp.hv{color:#e8620a;font-weight:900}
+.inp.bad{background:#ffe0e0!important;color:#c00}
+.gaibou-wrap{border-top:2px solid #1a1a1a;display:flex}
+.gaibou-box{width:160px;min-width:160px;border:2px solid #1a1a1a;border-right:3px solid #1a1a1a}
+.gb-hd{background:#1a1a1a;color:#fff;font-size:11px;font-weight:900;text-align:center;padding:5px 0;border-bottom:1px solid #333}
+.gb-lbl{background:#fff;font-size:10px;font-weight:700;text-align:center;padding:4px 0;border-bottom:1px solid #ddd}
+.gb-no{background:#fff;font-size:10px;font-weight:700;text-align:center;padding:4px 0;border-bottom:1px solid #ddd}
+.gb-inp-row{background:#fff;border-bottom:1px solid #ddd;height:28px}
+.gb-inp{width:100%;height:27px;border:none;background:transparent;font-family:inherit;font-size:10px;font-weight:700;outline:none;padding:0 6px;color:#e8620a;text-align:center}
+.gb-inp:focus{background:#fff3ec}
+.gb-arrow{text-align:center;padding:4px 0;font-size:16px;color:#e8620a;border-bottom:1px solid #ddd;background:#fff}
+.gb-ensen-hd{background:#1a1a1a;color:#fff;font-size:11px;font-weight:900;text-align:center;padding:5px 0;border-bottom:1px solid #333}
+.gb-ensen-inp-row{background:#fff;border-bottom:1px solid #ddd;height:28px}
+.gb-ensen-inp{width:100%;height:27px;border:none;background:transparent;font-family:inherit;font-size:10px;font-weight:700;outline:none;padding:0 6px;color:#e8620a;text-align:center}
+.gb-ensen-inp:focus{background:#fff3ec}
+.time-section{border-top:3px solid #1a1a1a;position:relative}
+.time-title{background:#f5f5f5;font-size:9px;font-weight:700;padding:3px 8px;border-bottom:1px solid #ddd;display:flex;align-items:center;gap:6px}
+.time-hint{font-size:8px;color:#888;margin-left:auto;white-space:nowrap}
+.time-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.time-table thead tr.tr-hour th{background:#fff;color:#000;font-size:8px;font-weight:700;text-align:left;padding:2px;border:1px solid #ddd;white-space:nowrap;overflow:hidden}
+.time-table thead tr.tr-min  th{background:#f5f5f5;color:#666;font-size:7px;font-weight:700;text-align:center;padding:1px 0;border:1px solid #ddd}
+.time-table tbody tr.tr-tdata td{background:#fff;border:1px solid #e8e8e8;padding:0;height:22px}
+.time-table tbody tr.tr-tdata td:hover{background:#fff8f4}
+.td-grand-hd{background:#1a1a1a!important;color:#fff!important;font-size:7px;font-weight:900;text-align:center;border:1px solid #333!important;white-space:normal;word-break:break-all;padding:2px;line-height:1.3;vertical-align:middle;width:52px;min-width:52px;position:sticky;right:0;z-index:3}
+.td-grand-val{background:#fff8f4!important;font-size:10px;font-weight:900;color:#e8620a;text-align:center;vertical-align:middle;border:2px solid #e8620a!important;white-space:nowrap;padding:1px 3px;width:52px;min-width:52px;position:sticky;right:0;z-index:2}
+#pageVol{min-height:100vh;background:#f5f5f5}
+.vol-note{background:#fffde7;border-bottom:2px solid #f9a825;padding:8px 14px;font-size:12px;font-weight:700;color:#e65100;text-align:center;letter-spacing:1px}
+.vol-outer{padding:12px;overflow:auto}
+.vol-paper{background:#fff;border:1.5px solid #ddd;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+/* VOL tables — same as main sheet, NO 数量 label column */
+.vol-tbl{width:100%;border-collapse:collapse;table-layout:fixed}
+.vg{background:#1a1a1a;color:#fff;font-size:11px;font-weight:900;text-align:center;padding:5px 4px;border:1px solid #222;overflow:hidden;letter-spacing:.5px}
+.vt{background:#bdd7ee;color:#000;font-size:10px;font-weight:700;text-align:center;padding:4px 2px;border:1px solid #9dc3e6;white-space:nowrap;overflow:hidden}
+.vi{background:#fff;border:1px solid #ccc;padding:0;height:26px}
+.vi:hover{background:#fff8f4}
+.vi input{width:100%;height:25px;border:none;background:transparent;text-align:center;font-family:monospace;font-size:10px;font-weight:700;outline:none;padding:0;color:#000}
+.vi input:focus{background:#fffde7}
+.vi input.filled{color:#c0392b;font-weight:900}
+.vsep{border-left:3px solid #555!important}
+.seisan-dept-sel{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:8px 12px;background:#f8f8f8;border:1px solid #e0e0e0;border-radius:3px}
+.seisan-dept-sel label{font-size:10px;font-weight:700;color:#555}
+.seisan-dept-sel select{padding:6px 10px;border:1.5px solid #e0e0e0;font-family:inherit;font-size:11px;outline:none;border-radius:2px;background:#fff;min-width:180px}
+.seisan-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.seisan-tbl th,.seisan-tbl td{border:2px solid #555;text-align:center;padding:0}
+.sc-label{background:#ffff99;font-weight:700;font-size:11px;padding:6px 10px;white-space:nowrap;min-width:80px}
+.sc-mokuhyo,.sc-kekka{background:#ffff99;font-weight:900;font-size:12px;padding:6px;border:2px solid #555}
+.sc-th-blue{background:#4fc3f7;color:#000;font-weight:700;font-size:10px;padding:5px 6px;border:1px solid #555;cursor:pointer;position:relative}
+.sc-th-pink{background:#f48fb1;color:#000;font-weight:700;font-size:10px;padding:5px 6px;border:1px solid #555;cursor:pointer;position:relative}
+.sc-th-blue:hover{background:#29b6f6}
+.sc-th-pink:hover{background:#f06292}
+.sc-th-sel{display:block;font-size:8px;color:rgba(0,0,0,.5);margin-top:1px}
+.sc-inp{width:100%;height:32px;border:none;background:transparent;text-align:center;font-family:inherit;font-size:11px;font-weight:700;outline:none;padding:0}
+.sc-inp:focus{background:#fffde7}
+.sc-inp-result{background:#fff9f9}
+.sc-inp-result:focus{background:#fce4ec}
+.sc-auto{font-size:11px;font-weight:700;color:#1565c0;background:#e3f2fd;padding:6px;text-align:center}
+.task-picker{position:absolute;top:100%;left:0;z-index:700;background:#fff;border:1.5px solid #e8620a;border-radius:2px;box-shadow:0 8px 24px rgba(0,0,0,.2);min-width:160px;display:none;max-height:200px;overflow-y:auto}
+.task-picker.open{display:block}
+.task-picker-item{padding:6px 12px;font-size:10px;cursor:pointer;border-bottom:1px solid #f0f0f0}
+.task-picker-item:hover{background:#fff8f4;color:#e8620a;font-weight:700}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;display:none;align-items:center;justify-content:center}
+.modal-bg.on{display:flex}
+.modal{background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4);display:flex;flex-direction:column;max-height:95vh}
+.modal-hd{background:#1a1a1a;color:#fff;padding:14px 18px;border-bottom:3px solid #e8620a;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-hd h3{font-size:12px;font-weight:900;letter-spacing:2px}
+.modal-close{background:none;border:none;color:#aaa;font-size:18px;cursor:pointer;line-height:1;padding:0}
+.modal-close:hover{color:#fff}
+.modal-body{padding:16px 18px;overflow-y:auto;flex:1}
+.modal-footer{padding:12px 18px;border-top:1px solid #eee;display:flex;gap:8px;flex-shrink:0;background:#fafafa}
+.mrow{margin-bottom:14px}
+.mrow label{display:block;font-size:9px;font-weight:700;letter-spacing:1px;color:#555;margin-bottom:5px;text-transform:uppercase}
+.mrow input,.mrow select{width:100%;padding:9px 11px;border:1.5px solid #e0e0e0;font-family:inherit;font-size:12px;outline:none;border-radius:2px;background:#fff}
+.mrow input:focus,.mrow select:focus{border-color:#e8620a}
+.mrow-2{display:flex;gap:10px}
+.mrow-2>div{flex:1}
+.role-selector{display:flex;gap:8px}
+.role-card{flex:1;min-width:70px;max-width:80px;padding:10px 4px;border:2px solid #e0e0e0;border-radius:3px;text-align:center;cursor:pointer;transition:all .15s;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.role-card:hover{border-color:#e8620a}
+.role-card.active-emp{border-color:#1565c0;background:#e3f2fd}
+.role-card.active-admin{border-color:#e8620a;background:#fff3e0}
+.role-card.active-odk{border-color:#2e7d32;background:#e8f5e9}
+.role-card.active-odks{border-color:#1565c0;background:#e3f2fd}
+.role-card .rc-icon{font-size:22px;margin-bottom:6px;line-height:1;display:block}
+.role-card .rc-label{font-size:10px;font-weight:700;color:#333;display:block;white-space:nowrap;line-height:1.3}
+.role-card .rc-desc{font-size:7px;color:#888;margin-top:3px;display:block;line-height:1.4;word-break:keep-all;white-space:nowrap}
+.btn-primary{padding:9px 16px;background:linear-gradient(135deg,#e8620a,#f47c20);color:#fff;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px}
+.btn-primary:hover{background:linear-gradient(135deg,#d05508,#e8620a)}
+.btn-green{padding:9px 16px;background:linear-gradient(135deg,#2e7d32,#43a047);color:#fff;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px}
+.btn-cancel{padding:9px 16px;background:#f0f0f0;color:#555;border:1px solid #ddd;font-family:inherit;font-size:10px;cursor:pointer;border-radius:2px}
+.btn-cancel:hover{background:#e0e0e0}
+.btn-danger{padding:9px 16px;background:#c62828;color:#fff;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px}
+.btn-teal{padding:9px 16px;background:linear-gradient(135deg,#00695c,#00897b);color:#fff;border:none;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;border-radius:2px}
+.ml-auto{margin-left:auto}
+.btn-disabled{opacity:.4!important;cursor:not-allowed!important;pointer-events:none!important}
+.save-count-badge{font-size:9px;color:#aaa;margin-right:4px;white-space:nowrap}
+.save-count-warn{color:#e8620a!important;font-weight:700}
+.cpwd-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;display:flex;align-items:center;justify-content:center}
+.cpwd-modal{background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5);width:360px}
+.cpwd-hd{background:#1a1a1a;color:#fff;padding:16px 20px;border-bottom:3px solid #e8620a}
+.cpwd-hd h3{font-size:13px;font-weight:900;letter-spacing:2px}
+.cpwd-body{padding:20px 20px 16px}
+.cpwd-notice{background:#fff8e1;border:1.5px solid #f9a825;border-radius:3px;padding:10px 12px;font-size:10px;color:#e65100;margin-bottom:16px;line-height:1.7;font-weight:600}
+.cpwd-row{margin-bottom:14px}
+.cpwd-row label{display:block;font-size:9px;font-weight:700;letter-spacing:1px;color:#555;margin-bottom:5px;text-transform:uppercase}
+.cpwd-row .pw-field input{width:100%;padding:9px 42px 9px 11px;border:1.5px solid #e0e0e0;font-family:inherit;font-size:12px;outline:none;border-radius:2px;background:#fff}
+.cpwd-row .pw-field input:focus{border-color:#e8620a}
+.cpwd-err{color:#c0392b;font-size:10px;margin-top:8px;display:none;padding:6px 8px;background:#fff5f5;border:1px solid #fcc;border-radius:2px}
+.cpwd-footer{padding:12px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end}
+.cur-pwd-display{margin-top:6px;font-size:10px;color:#555;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:2px;padding:7px 10px;display:flex;align-items:center;gap:8px;font-family:monospace;letter-spacing:1px}
+.cur-pwd-val{flex:1;font-weight:700;color:#1a1a1a}
+.cur-pwd-toggle{background:none;border:none;cursor:pointer;color:#aaa;font-size:14px;padding:0;line-height:1}
+.cur-pwd-toggle:hover{color:#e8620a}
+.must-change-badge{display:inline-block;font-size:8px;font-weight:700;padding:1px 5px;border-radius:8px;background:#fff3e0;color:#e8620a;border:1px solid #f47c20;margin-left:4px}
+.archived-badge{display:inline-block;font-size:8px;font-weight:700;padding:2px 7px;border-radius:8px;background:#f5f5f5;color:#999;border:1px solid #ddd;margin-left:6px}
+.btn-sm-archive{background:#f57c00;color:#fff}
+.btn-sm-restore{background:#388e3c;color:#fff}
+.archived-row td{opacity:.5}
+.utbl{width:100%;border-collapse:collapse;font-size:11px}
+.utbl th{background:#1a1a1a;color:#fff;padding:6px 10px;text-align:left;font-size:11px;font-weight:700}
+.utbl td{padding:6px 10px;border-bottom:1px solid #f0f0f0;vertical-align:middle;font-size:11px}
+.utbl tr:hover td{background:#fff8f4}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
+.badge-admin{background:#fff3e0;color:#e8620a;border:1px solid #f47c20}
+.badge-emp{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+.btn-sm{padding:4px 10px;font-size:10px;font-weight:700;border:none;border-radius:2px;cursor:pointer;font-family:inherit}
+.btn-sm-edit{background:#1565c0;color:#fff}
+.btn-sm-del{background:#c62828;color:#fff}
+.act-btns{display:flex;gap:4px}
+.search-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.search-bar input{flex:1;padding:7px 11px;border:1.5px solid #e0e0e0;font-family:inherit;font-size:11px;outline:none;border-radius:2px}
+.search-bar input:focus{border-color:#e8620a}
+.user-count{font-size:10px;color:#aaa;white-space:nowrap}
+.emp-filter-box{border:1.5px solid #e0e0e0;border-radius:2px;overflow:hidden}
+.emp-search-bar2{display:flex;align-items:center;border-bottom:1px solid #e8e8e8}
+.emp-search-bar2 input{flex:1;padding:7px 10px;border:none;font-family:inherit;font-size:11px;outline:none;background:#fafafa}
+.el{max-height:130px;overflow-y:auto;padding:4px}
+.ei{display:flex;align-items:center;gap:7px;padding:4px 6px;border-radius:2px;cursor:pointer}
+.ei:hover{background:#fff8f4}
+.ei input[type=checkbox]{accent-color:#e8620a;width:13px;height:13px}
+.ei label{font-size:10px;cursor:pointer;flex:1}
+.ec{display:flex;gap:6px;padding:5px 6px;border-top:1px solid #eee;background:#fafafa;align-items:center}
+.esp{font-size:9px;color:#e8620a;background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 4px}
+.esp:hover{text-decoration:underline}
+.ecl{font-size:9px;color:#888;margin-left:auto}
+.dept-export-box{border:1.5px solid #e0e0e0;border-radius:2px;overflow:hidden}
+.dept-ctrl{display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid #eee;background:#fafafa}
+.dept-list{max-height:100px;overflow-y:auto;padding:4px}
+.di{display:flex;align-items:center;gap:7px;padding:4px 6px;cursor:pointer}
+.di:hover{background:#fff8f4}
+.di input[type=checkbox]{accent-color:#e8620a;width:13px;height:13px}
+.di label{font-size:10px;cursor:pointer;flex:1}
+.toast{position:fixed;bottom:16px;right:16px;background:#1a1a1a;color:#fff;padding:12px 20px;font-size:13px;font-weight:700;z-index:9999;border-left:4px solid #e8620a;border-radius:3px;transform:translateY(50px);opacity:0;transition:all .22s;pointer-events:none;max-width:320px;line-height:1.5}
+.toast.on{transform:none;opacity:1}
+@media screen and (max-width:768px){
+/* ── viewport fix: allow horizontal scroll on table area only ── */
+body{font-size:10px}
+.topbar{height:auto;min-height:36px;padding:4px 8px;flex-wrap:wrap;gap:4px}
+.topbar-left{gap:6px}
+.topbar-logo{font-size:9px;padding:2px 6px}
+.tb-title{font-size:10px}
+.tb-affil{font-size:9px;padding:2px 8px;letter-spacing:1px;position:static;transform:none;order:-1;width:100%;text-align:center;margin-bottom:2px}
+.tb-r{gap:3px;flex-wrap:wrap;justify-content:flex-end}
+.tbb{font-size:8px;padding:2px 6px}
+/* ctrl bar */
+.ctrl{padding:4px 8px;gap:5px;font-size:9px}
+/* paper: allow scroll horizontally */
+.paper-outer{padding:4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.paper{min-width:600px}
+/* main task tables */
+.sheet{table-layout:auto}
+.td-grp{font-size:8px;padding:3px 1px;white-space:nowrap}
+.td-task{font-size:7px;padding:2px 1px;white-space:normal;word-break:break-all;line-height:1.2;min-width:28px}
+.td-no{font-size:7px;padding:1px}
+.td-inp{height:22px}
+.inp{font-size:8px;height:21px}
+/* gaibou box */
+.gaibou-wrap{flex-wrap:wrap}
+.gaibou-box{width:130px;min-width:130px}
+.gb-hd,.gb-ensen-hd{font-size:9px;padding:3px 0}
+.gb-inp,.gb-ensen-inp{font-size:9px}
+/* time table */
+.time-section{overflow-x:auto;-webkit-overflow-scrolling:touch;position:relative}
+.time-table{min-width:700px;table-layout:auto}
+.time-table thead tr.tr-hour th{font-size:7px;padding:1px}
+.time-table thead tr.tr-min th{font-size:6px;padding:0}
+.time-table tbody tr.tr-tdata td{height:20px}
+.td-grand-hd{font-size:6px;width:40px;min-width:40px;position:sticky;right:0;z-index:3}
+.td-grand-val{font-size:9px;width:40px;min-width:40px;position:sticky;right:0;z-index:2}
+/* time hint wrap */
+.time-title{flex-wrap:wrap;gap:2px}
+.time-hint{font-size:7px;margin-left:0;white-space:normal}
+/* paper header */
+.ph{flex-wrap:wrap;gap:6px;font-size:8px}
+/* VOL page */
+.vol-outer{padding:4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.vol-paper{min-width:600px}
+.vol-tbl{table-layout:auto}
+.vg{font-size:9px;padding:3px 2px;white-space:nowrap}
+.vt{font-size:7px;padding:2px 1px;white-space:normal;word-break:break-all;line-height:1.2;min-width:28px}
+.vi{height:24px}
+.vi input{font-size:8px;height:23px}
+/* vol topbar */
+#pageVol .topbar{height:auto;padding:4px 8px;flex-wrap:wrap;gap:3px}
+/* modals */
+.modal{max-width:95vw;margin:0 auto}
+.modal-body{padding:12px}
+.seisan-tbl{font-size:10px}
+.sc-inp{font-size:10px;height:28px}
+/* emp selector */
+.emp-sel-btn{min-width:130px;font-size:9px}
+.emp-dropdown{min-width:220px}
+/* login screen */
+.login-brand{width:100%;padding:24px 20px;gap:12px}
+.login-form-wrap{width:100%;border-radius:0}
+#loginScreen{flex-direction:column;align-items:stretch}
+#loginScreen::before{width:100%;height:220px;top:0;left:0;transform:none}
+.brand-name-en{font-size:20px}
+}
+@media screen and (max-width:400px){
+.td-task{font-size:6px;min-width:24px}
+.td-grp{font-size:7px}
+.vt{font-size:6px;min-width:24px}
+.vg{font-size:8px}
+}
+@media print{.topbar,.ctrl{display:none!important}.paper-outer{padding:0}.paper{box-shadow:none;border:1px solid #000}body{background:#fff}.inp{color:#000!important}@page{size:A3 landscape;margin:5mm}}
+</style>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-brand">
+    <div>
+      <div class="brand-tag">Daily Report System</div>
+      <div class="odk-logo"><div class="odk-logo-box">ODK</div><div class="odk-logo-sub">オオサカデリバリー<br>株式会社</div></div>
+      <div class="brand-name-en">SPREAD<br>ORANGE</div>
+    </div>
+    <div class="brand-divider"></div>
+    <div class="brand-tagline">デジタル化が進む、<br>働く私たちも進む。</div>
+    <div class="brand-spread">ODK</div>
+  </div>
+  <div class="login-form-wrap">
+    <div class="form-header"><h2>日報管理システム</h2><p>DAILY REPORT MANAGEMENT</p></div>
+    <div class="form-body">
+      <div class="lf"><label>社員番号</label><input type="text" id="lid" placeholder="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="numeric"/></div>
+      <div class="lf"><label>パスワード</label><div class="pw-field"><input type="password" id="lpwd" placeholder="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/><button type="button" class="pw-show-btn" onclick="togglePw('lpwd',this)" tabindex="-1">👁</button></div></div>
+      <button class="lbtn" id="lbtn">ログイン</button>
+      <div class="lerr" id="lerr">社員番号またはパスワードが正しくありません</div>
+    </div>
+  </div>
+</div>
+
+<div id="pageMain" class="page">
+  <div class="topbar">
+    <div class="topbar-left"><div class="topbar-logo">ODK</div><span class="tb-title">日報管理 / 作業実績表</span><span style="font-size:11px;font-weight:700;color:#e8620a;margin-left:8px;letter-spacing:1px">岩出営業所</span></div>
+    <span id="tbAffil" class="tb-affil" style="display:none"></span>
+    <div class="tb-r">
+      <span id="tbUser"></span>
+      <span class="save-count-badge" id="saveCountBadge"></span><button class="tbb" id="bRefresh" onclick="forceRefreshToday()" title="データを再読み込み" style="border-color:#555;color:#aaa;font-size:9px">🔄</button><button class="tbb" id="bSave">💾 保存</button>
+      <button class="tbb tbb-green" id="bExcel">📊 Excel出力</button>
+      <button class="tbb tbb-purple" id="bVol">📦 VOL</button>
+      <button class="tbb tbb-teal" id="bSeisan">📈 生産性</button>
+      <button class="tbb tbb-blue" id="bUsers" style="display:none">👥 社員管理</button>
+      <button class="tbb" id="bPrint">🖨 印刷</button>
+      <button class="tbb" id="bOut">ログアウト</button>
+    </div>
+  </div>
+  <div class="ctrl">
+    <label>日付</label><button class="dnav-btn" onclick="mainShiftDate(-1)">◀</button><input type="date" id="datePick"/><button class="dnav-btn" onclick="mainShiftDate(1)">▶</button><span id="mainDateLabel" style="font-size:11px;font-weight:700;color:#333;margin-left:4px"></span>
+    <label style="margin-left:8px" id="empTypeLabel">社員</label>
+    <div class="emp-sel-wrap" id="empSelWrap">
+      <button type="button" class="emp-sel-btn" id="empSelBtn"><span class="sel-name" id="empSelLabel">選択...</span><span class="sel-arrow">▼</span></button>
+      <div class="emp-dropdown" id="empDropdown">
+        <div class="emp-drop-search"><span>🔍</span><input type="text" id="empDropSearch" placeholder="名前・社員番号で検索..."/></div>
+        <div class="emp-drop-info" id="empDropInfo"></div>
+        <div class="emp-drop-list" id="empDropList"></div>
+      </div>
+    </div>
+    <button class="tbb" style="border-color:#ccc;color:#555;background:#fff" id="bSave2">💾 保存</button>
+  </div>
+  <div class="paper-outer"><div class="paper">
+
+    <div id="tw"></div>
+    <div class="gaibou-wrap">
+      <div class="gaibou-box">
+        <div class="gb-hd">外部応援</div><div class="gb-lbl">応援</div><div class="gb-no">101</div>
+        <div class="gb-inp-row"><input class="gb-inp all-inp" type="text" inputmode="decimal" maxlength="6" data-g="GAIBOU" data-t="0"/></div>
+        <div class="gb-arrow">↓</div>
+        <div class="gb-ensen-hd">応援先</div><div class="gb-ensen-inp-row"><input class="gb-ensen-inp all-inp" type="text" inputmode="decimal" maxlength="6" data-g="ENSEN" data-t="0"/></div>
+        <div class="gb-ensen-hd">応援先</div><div class="gb-ensen-inp-row"><input class="gb-ensen-inp all-inp" type="text" inputmode="decimal" maxlength="6" data-g="ENSEN" data-t="1"/></div>
+        <div class="gb-ensen-hd">応援先</div><div class="gb-ensen-inp-row"><input class="gb-ensen-inp all-inp" type="text" inputmode="decimal" maxlength="6" data-g="ENSEN" data-t="2"/></div>
+      </div>
+      <div style="flex:1"></div>
+    </div>
+    <div class="time-section">
+      <div class="time-title"><span>作業日報　AM9時〜PM20時まで</span><span class="time-hint">15分＝0.25mh　30分＝0.5mh　45分＝0.75mh　60分＝1mh</span></div>
+      <table class="time-table"><thead><tr class="tr-hour" id="tHR"></tr><tr class="tr-min" id="tMR"></tr></thead><tbody><tr class="tr-tdata" id="tDR"></tr></tbody></table>
+    </div>
+  </div></div>
+</div>
+
+<div id="pageVol" class="page">
+  <div class="topbar">
+    <div class="topbar-left"><div class="topbar-logo">ODK</div><span class="tb-title">📦 VOL入力 — 本日の作業量</span><span style="font-size:11px;font-weight:700;color:#e8620a;margin-left:8px;letter-spacing:1px">岩出営業所</span></div>
+    <div class="tb-r">
+      <span id="volUserBadge"></span>
+      <span class="save-count-badge" id="volSaveCountBadge"></span><button class="tbb" id="bVolSave" onclick="saveVol()">💾 保存</button>
+      <button class="tbb tbb-green" onclick="openVolExport()">📊 Excel出力</button>
+      <button class="tbb" onclick="showPage('main')" style="border-color:#888;color:#ccc">← 戻る</button>
+    </div>
+  </div>
+  <div class="ctrl">
+    <label>日付</label>
+    <button class="dnav-btn" onclick="volShiftDate(-1)">◀</button>
+    <input type="date" id="volDate" onchange="loadVol()"/>
+    <button class="dnav-btn" onclick="volShiftDate(1)">▶</button>
+    <label style="margin-left:8px">社員</label>
+    <div class="emp-sel-wrap" id="volEmpSelWrap">
+      <button type="button" class="emp-sel-btn" id="volEmpSelBtn"><span class="sel-name" id="volEmpSelLabel">選択...</span><span class="sel-arrow">▼</span></button>
+      <div class="emp-dropdown" id="volEmpDropdown">
+        <div class="emp-drop-search"><span>🔍</span><input type="text" id="volEmpDropSearch" placeholder="名前・社員番号で検索..."/></div>
+        <div class="emp-drop-info" id="volEmpDropInfo"></div>
+        <div class="emp-drop-list" id="volEmpDropList"></div>
+      </div>
+    </div>
+    <span id="volDateLabel" style="font-size:11px;font-weight:700;color:#333;margin-left:6px"></span>
+  </div>
+  <div class="vol-note">※本日の作業VOLを記載してください！</div>
+  <div class="vol-outer"><div class="vol-paper" id="volPaper"></div></div>
+</div>
+
+<!-- 生産性 -->
+<div class="modal-bg" id="seisanModal">
+  <div class="modal" style="width:860px;max-height:95vh">
+    <div class="modal-hd"><h3>📈 生産性</h3><button class="modal-close" onclick="CM('seisanModal')" style="margin-left:auto">✕</button></div>
+    <div style="background:#f8f8f8;border-bottom:1px solid #e0e0e0;padding:6px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0">
+      <label style="font-size:10px;font-weight:700;color:#555">日付</label>
+      <button class="dnav-btn" onclick="seisanShiftDate(-1)">◀</button>
+      <input type="date" id="seisanDatePick" onchange="seisanDateChanged()" style="padding:4px 7px;border:1px solid #ccc;font-family:inherit;font-size:10px;background:#fff;outline:none;border-radius:1px"/>
+      <button class="dnav-btn" onclick="seisanShiftDate(1)">▶</button>
+      <span id="seisanDateLabel" style="font-size:11px;font-weight:700;color:#333;margin-left:4px"></span>
+      <label style="margin-left:12px;font-size:10px;font-weight:700;color:#555">部門選択：</label>
+      <select id="seisanDept" onchange="buildSeisanTable()" style="padding:4px 8px;border:1px solid #ccc;font-family:inherit;font-size:10px;outline:none;border-radius:1px;background:#fff;min-width:160px"><option value="">-- 部門を選択 --</option></select>
+    </div>
+    <div class="modal-body" style="flex:1;overflow-y:auto">
+      <div id="seisanContent"><div style="text-align:center;color:#aaa;padding:30px;font-size:11px">部門を選択してください</div></div>
+    </div>
+    <div class="modal-footer"><button class="btn-cancel" onclick="CM('seisanModal')">閉じる</button><button class="btn-green" onclick="openSeisanExport()" style="margin-left:8px">📊 Excel出力</button><button class="btn-teal" onclick="buildSeisanTable()" style="margin-left:auto">🔄 更新</button></div>
+  </div>
+</div>
+
+<!-- 社員管理 -->
+<div class="modal-bg" id="userModal">
+  <div class="modal" style="width:560px">
+    <div class="modal-hd"><h3>👥 社員管理</h3><button class="modal-close" onclick="CM('userModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="search-bar"><input type="text" id="userSearch" placeholder="🔍 名前・社員番号で検索..."/><button class="btn-primary" onclick="openAddUser()" style="white-space:nowrap;font-size:11px">＋ 新規追加</button><button class="btn-cancel" id="btnShowArchive" onclick="toggleArchiveView()" style="white-space:nowrap;font-size:12px;padding:6px 12px">📦 退職者</button><span class="user-count" id="userCount"></span></div>
+      <div id="userListWrap"></div>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="editUserModal">
+  <div class="modal" style="width:360px">
+    <div class="modal-hd"><h3 id="editUserTitle">＋ 社員追加</h3><button class="modal-close" onclick="CM('editUserModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="mrow"><label>社員番号 <span style="color:#e8620a">*</span></label><input type="text" id="euId" placeholder=""/><div id="euIdHint" style="font-size:9px;margin-top:3px"></div></div>
+      <div class="mrow"><label>名前 <span style="color:#e8620a">*</span></label><input type="text" id="euName" placeholder=""/></div>
+      <div class="mrow"><label>パスワード <span style="color:#e8620a" id="pwRequired">*</span></label><div class="pw-field"><input type="password" id="euPwd" placeholder="新しいパスワードを入力"/><button type="button" class="pw-show-btn" onclick="togglePw('euPwd',this)" tabindex="-1">👁</button></div><div style="font-size:9px;color:#aaa;margin-top:3px" id="euPwdHint"></div>
+        <div class="cur-pwd-display" id="curPwdDisplay" style="display:none">
+          <span style="font-size:9px;color:#888;white-space:nowrap">現在:</span>
+          <span class="cur-pwd-val" id="curPwdVal">••••••</span>
+          <button type="button" class="cur-pwd-toggle" id="curPwdToggle" onclick="toggleCurPwd()" title="表示/非表示">👁</button>
+        </div>
+      </div>
+      <div class="mrow" id="mustChangePwdRow" style="display:none">
+        <label>初回パスワード変更</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:10px;font-weight:600;color:#333">
+          <input type="checkbox" id="mustChangePwdChk" style="accent-color:#e8620a;width:14px;height:14px"/>
+          次回ログイン時にパスワード変更を要求する
+        </label>
+      </div>
+      <div class="mrow"><label>権限 <span style="color:#e8620a">*</span></label>
+        <div class="role-selector" id="roleSelectorWrap" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-start">
+          <div class="role-card active-odk" id="rcEmp" onclick="selectRole('emp')">
+            <div class="rc-icon">🟢</div>
+            <div class="rc-label">ODK籍</div>
+            <div class="rc-desc">全機能</div>
+          </div>
+          <div class="role-card" id="rcOdks" onclick="selectRole('odks')">
+            <div class="rc-icon">🔵</div>
+            <div class="rc-label">ODKS籍</div>
+            <div class="rc-desc">日報のみ</div>
+          </div>
+          <div class="role-card" id="rcManager" onclick="selectRole('manager')">
+            <div class="rc-icon">🔑</div>
+            <div class="rc-label">管理者</div>
+            <div class="rc-desc">管理機能</div>
+          </div>
+          <div class="role-card" id="rcAdmin" onclick="selectRole('admin')" style="display:none">
+            <div class="rc-icon">⚙️</div>
+            <div class="rc-label">ADMIN</div>
+            <div class="rc-desc">全権限</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn-cancel" onclick="CM('editUserModal')">キャンセル</button><button class="btn-sm btn-sm-archive ml-auto" id="delUserBtn" style="display:none;padding:9px 16px;font-size:10px;font-weight:700;border:none;border-radius:2px;cursor:pointer" onclick="confirmArchiveUser()">📦 退職処理</button><button class="btn-danger" id="hardDelBtn" style="display:none;margin-left:6px" onclick="confirmHardDelete()">🗑 完全削除</button><button class="btn-sm btn-sm-restore" id="restoreUserBtn" style="display:none;padding:9px 16px;font-size:10px;font-weight:700;border:none;border-radius:2px;cursor:pointer;margin-left:6px" onclick="confirmRestoreUser()">↩ 復職</button><button class="btn-primary" onclick="saveUser()">💾 保存</button></div>
+  </div>
+</div>
+
+<!-- Excel出力 日報 -->
+<div class="modal-bg" id="exportModal">
+  <div class="modal" style="width:460px">
+    <div class="modal-hd"><h3>📊 EXCEL出力（日報）</h3><button class="modal-close" onclick="CM('exportModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="mrow"><label>集計期間</label><select id="expPeriod" onchange="expPeriodChange()"><option value="day">日次（選択中の日）</option><option value="week">週次（今週）</option><option value="month" selected>月次（今月）</option><option value="year">年次（今年）</option><option value="custom">カスタム期間</option></select></div>
+      <div id="customRange" style="display:none" class="mrow"><div class="mrow-2"><div><label>開始日</label><input type="date" id="expFrom"/></div><div><label>終了日</label><input type="date" id="expTo"/></div></div></div>
+      <div class="mrow"><label>対象部門</label><div class="dept-export-box"><div class="dept-ctrl"><button class="esp" id="deptAll">全選択</button><button class="esp" id="deptNone">全解除</button><span class="ecl" id="deptCount">0部門</span></div><div class="dept-list" id="deptCheckList"></div></div></div>
+      <div class="mrow"><label>対象社員</label><div class="emp-filter-box"><div class="emp-search-bar2"><span style="padding:0 8px;color:#aaa">🔍</span><input type="text" id="expEmpSearch" placeholder="名前・社員番号で検索..."/></div><div class="el" id="empCheckList"></div><div class="ec"><button class="esp" id="empSelAll">全選択</button><button class="esp" id="empSelNone">全解除</button><span class="ecl" id="empCount">0名</span></div></div></div>
+    </div>
+    <div class="modal-footer"><button class="btn-cancel" onclick="CM('exportModal')">キャンセル</button><button class="tbb" onclick="reloadExportData()" style="border-color:#1565c0;color:#90caf9;margin-left:8px" title="最新データを再読み込み">🔄 データ更新</button><button class="btn-green ml-auto" id="doExport">📥 ダウンロード</button></div>
+  </div>
+</div>
+
+<!-- Excel出力 VOL -->
+<div class="modal-bg" id="volExportModal">
+  <div class="modal" style="width:480px">
+    <div class="modal-hd"><h3>📊 VOL Excel出力</h3><button class="modal-close" onclick="CM('volExportModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="mrow"><label>集計期間</label><select id="vExpPeriod" onchange="vExpPeriodChange()"><option value="day">日次（選択中の日）</option><option value="week">週次（今週）</option><option value="month" selected>月次（今月）</option><option value="year">年次（今年）</option><option value="custom">カスタム期間</option></select></div>
+      <div id="vCustomRange" style="display:none" class="mrow"><div class="mrow-2"><div><label>開始日</label><input type="date" id="vExpFrom"/></div><div><label>終了日</label><input type="date" id="vExpTo"/></div></div></div>
+      <div class="mrow"><label>対象部門</label><div class="dept-export-box"><div class="dept-ctrl"><button class="esp" id="vDeptAll">全選択</button><button class="esp" id="vDeptNone">全解除</button><span class="ecl" id="vDeptCount">0部門</span></div><div class="dept-list" id="vDeptCheckList"></div></div></div>
+    </div>
+    <div class="modal-footer"><button class="btn-cancel" onclick="CM('volExportModal')">キャンセル</button><button class="btn-green ml-auto" onclick="doVolExport()">📥 ダウンロード</button></div>
+  </div>
+</div>
+
+<!-- Excel出力 生産性 -->
+<div class="modal-bg" id="seisanExportModal">
+  <div class="modal" style="width:480px">
+    <div class="modal-hd"><h3>📊 生産性 Excel出力</h3><button class="modal-close" onclick="CM('seisanExportModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="mrow"><label>集計期間</label><select id="seExpPeriod" onchange="seExpPeriodChange()"><option value="day">日次（選択中の日）</option><option value="week">週次（今週）</option><option value="month" selected>月次（今月）</option><option value="year">年次（今年）</option><option value="custom">カスタム期間</option></select></div>
+      <div id="seCustomRange" style="display:none" class="mrow"><div class="mrow-2"><div><label>開始日</label><input type="date" id="seExpFrom"/></div><div><label>終了日</label><input type="date" id="seExpTo"/></div></div></div>
+      <div class="mrow"><label>対象部門</label><div class="dept-export-box"><div class="dept-ctrl"><button class="esp" id="seDeptAll">全選択</button><button class="esp" id="seDeptNone">全解除</button><span class="ecl" id="seDeptCount">0部門</span></div><div class="dept-list" id="seDeptCheckList"></div></div></div>
+    </div>
+    <div class="modal-footer"><button class="btn-cancel" onclick="CM('seisanExportModal')">キャンセル</button><button class="btn-green ml-auto" onclick="doSeisanExport()">📥 ダウンロード</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- パスワード変更（初回ログイン） -->
+<div class="cpwd-modal-bg" id="cpwdModal" style="display:none">
+  <div class="cpwd-modal">
+    <div class="cpwd-hd"><h3>🔑 パスワード変更</h3></div>
+    <div class="cpwd-body">
+      <div class="cpwd-notice">⚠ 初回ログインのため、パスワードを変更してください。<br>変更しないとシステムを使用できません。</div>
+      <div class="cpwd-row"><label>新しいパスワード <span style="color:#e8620a">*</span></label><div class="pw-field"><input type="password" id="cpwdNew" placeholder="新しいパスワード"/><button type="button" class="pw-show-btn" onclick="togglePw('cpwdNew',this)" tabindex="-1">👁</button></div></div>
+      <div class="cpwd-row"><label>確認（もう一度） <span style="color:#e8620a">*</span></label><div class="pw-field"><input type="password" id="cpwdConfirm" placeholder="確認用パスワード"/><button type="button" class="pw-show-btn" onclick="togglePw('cpwdConfirm',this)" tabindex="-1">👁</button></div></div>
+      <div class="cpwd-err" id="cpwdErr"></div>
+    </div>
+    <div class="cpwd-footer"><button class="btn-primary" onclick="submitChangePwd()">💾 変更して続ける</button></div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+'use strict';
+const UK='odk_users_v4',DK='kintai_data_v1',VK='odk_vol_v1',SK='odk_seisan_v1';
+
+/* ══ FIREBASE CONFIG ══ */
+const firebaseConfig = {
+  apiKey: "AIzaSyB0HIKN75HRwTK4609VYTBAm1WPsy7gqQE",
+  authDomain: "odk-nippo.firebaseapp.com",
+  databaseURL: "https://odk-nippo-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "odk-nippo",
+  storageBucket: "odk-nippo.firebasestorage.app",
+  messagingSenderId: "809223309986",
+  appId: "1:809223309986:web:b692032f5a067b9fad65fb"
+};
+firebase.initializeApp(firebaseConfig);
+const fbDB = firebase.database();
+
+/* ══ FIREBASE DB HELPERS ══
+   db, volDb, seisanDb → sync với Firebase
+   Khi save: ghi lên Firebase → tất cả thiết bị tự cập nhật
+*/
+let fbReady = false; // true khi đã load xong dữ liệu từ Firebase
+
+function fbSet(path, data){
+  return fbDB.ref(path).set(data);
+}
+function fbGet(path){
+  return fbDB.ref(path).once('value').then(snap=>snap.val()||{});
+}
+function fbOn(path, cb){
+  fbDB.ref(path).on('value', snap=>cb(snap.val()||{}));
+}
+const DEFAULT_USERS=[
+  {id:'admin',name:'管理者',pwd:'admin123',role:'superadmin'},
+  {id:'3041761',name:'森北 貴志',pwd:'3041761',role:'emp',mustChangePwd:true},
+  {id:'3043100',name:'宇都宮 一馬',pwd:'3043100',role:'emp',mustChangePwd:true},
+  {id:'3350002',name:'河内 明子',pwd:'3350002',role:'emp',mustChangePwd:true},
+  {id:'3565424',name:'谷岡 弘幸',pwd:'3565424',role:'emp',mustChangePwd:true},
+  {id:'3872327',name:'川原 美智子',pwd:'3872327',role:'emp',mustChangePwd:true},
+  {id:'4211499',name:'中村 治久',pwd:'4211499',role:'emp',mustChangePwd:true},
+  {id:'4211847',name:'水内 哲也',pwd:'4211847',role:'emp',mustChangePwd:true},
+  {id:'4212886',name:'吉村 千里',pwd:'4212886',role:'emp',mustChangePwd:true},
+  {id:'4313500',name:'勝谷 直美',pwd:'4313500',role:'emp',mustChangePwd:true},
+  {id:'4313577',name:'猪鼻 雅代',pwd:'4313577',role:'emp',mustChangePwd:true},
+  {id:'4313771',name:'小林 陽子',pwd:'4313771',role:'emp',mustChangePwd:true},
+  {id:'4314000',name:'福栄 恵美',pwd:'4314000',role:'emp',mustChangePwd:true},
+  {id:'4414705',name:'田邉 博文',pwd:'4414705',role:'emp',mustChangePwd:true},
+  {id:'4515234',name:'西山 仁',pwd:'4515234',role:'emp',mustChangePwd:true},
+  {id:'4618025',name:'谷口 公則',pwd:'4618025',role:'emp',mustChangePwd:true},
+  {id:'4718267',name:'服部 琥珀',pwd:'4718267',role:'emp',mustChangePwd:true},
+  {id:'4718283',name:'坂口 結彌',pwd:'4718283',role:'emp',mustChangePwd:true},
+  {id:'4719255',name:'山口 誠司',pwd:'4719255',role:'emp',mustChangePwd:true},
+  {id:'4719352',name:'持田 敏行',pwd:'4719352',role:'emp',mustChangePwd:true},
+  {id:'4719450',name:'後藤 佑軸',pwd:'4719450',role:'emp',mustChangePwd:true},
+  {id:'4719476',name:'中村 健良',pwd:'4719476',role:'emp',mustChangePwd:true},
+  {id:'4719573',name:'熊澤 正行',pwd:'4719573',role:'emp',mustChangePwd:true},
+  {id:'4819802',name:'早川 誠也',pwd:'4819802',role:'emp',mustChangePwd:true},
+  {id:'4719751',name:'中元 愛結',pwd:'4719751',role:'emp',mustChangePwd:true},
+  {id:'4820037',name:'篠原 葵',pwd:'4820037',role:'emp',mustChangePwd:true},
+  {id:'4820045',name:'辻岡 陸',pwd:'4820045',role:'emp',mustChangePwd:true},
+  {id:'4820444',name:'甲斐 綾乃',pwd:'4820444',role:'emp',mustChangePwd:true},
+  {id:'4820525',name:'桑原 拓弥',pwd:'4820525',role:'emp',mustChangePwd:true},
+  {id:'4820541',name:'グエンヴァン トゥン',pwd:'4820541',role:'emp',mustChangePwd:true},
+  {id:'4820550',name:'グエンヂエウ リン',pwd:'4820550',role:'emp',mustChangePwd:true},
+  {id:'4821050',name:'西岡 里奈',pwd:'4821050',role:'emp',mustChangePwd:true},
+  {id:'4821068',name:'栗山 裕賀',pwd:'4821068',role:'emp',mustChangePwd:true},
+  {id:'4515731',name:'富田 壮一',pwd:'4515731',role:'emp',mustChangePwd:true},
+  {id:'4515889',name:'山田 雅之',pwd:'4515889',role:'emp',mustChangePwd:true},
+  {id:'4515897',name:'鈴木 孝俊',pwd:'4515897',role:'emp',mustChangePwd:true},
+  {id:'4517181',name:'片山 やよい',pwd:'4517181',role:'emp',mustChangePwd:true},
+  {id:'4517202',name:'門脇 明美',pwd:'4517202',role:'emp',mustChangePwd:true},
+  {id:'4517229',name:'大塚 雅',pwd:'4517229',role:'emp',mustChangePwd:true},
+  {id:'4517245',name:'木村 千亜紀',pwd:'4517245',role:'emp',mustChangePwd:true},
+  {id:'4618092',name:'城 均幸',pwd:'4618092',role:'emp',mustChangePwd:true},
+  {id:'4718372',name:'數藤 佑太',pwd:'4718372',role:'emp',mustChangePwd:true},
+  {id:'4718429',name:'神田 雅裕',pwd:'4718429',role:'emp',mustChangePwd:true},
+  {id:'4719298',name:'児玉 洋斗',pwd:'4719298',role:'emp',mustChangePwd:true},
+  {id:'4719662',name:'島村 由紀',pwd:'4719662',role:'emp',mustChangePwd:true},
+  {id:'4820797',name:'鈴木 夢唯',pwd:'4820797',role:'emp',mustChangePwd:true},
+  {id:'30000011',name:'山﨑 英子',pwd:'30000011',role:'odks',mustChangePwd:true},
+  {id:'30000033',name:'永松 美香',pwd:'30000033',role:'odks',mustChangePwd:true},
+  {id:'30000042',name:'田上 さゆり',pwd:'30000042',role:'odks',mustChangePwd:true},
+  {id:'30000048',name:'松田 恵子',pwd:'30000048',role:'odks',mustChangePwd:true},
+  {id:'30000051',name:'前田 直美',pwd:'30000051',role:'odks',mustChangePwd:true},
+  {id:'30000063',name:'三尾 佳代',pwd:'30000063',role:'odks',mustChangePwd:true},
+  {id:'30000070',name:'大浦 真由美',pwd:'30000070',role:'odks',mustChangePwd:true},
+  {id:'30000071',name:'南方 奈美',pwd:'30000071',role:'odks',mustChangePwd:true},
+  {id:'30000087',name:'本田 結美',pwd:'30000087',role:'odks',mustChangePwd:true},
+  {id:'30000101',name:'亀井 美穂',pwd:'30000101',role:'odks',mustChangePwd:true},
+  {id:'30000119',name:'中村 ゆい',pwd:'30000119',role:'odks',mustChangePwd:true},
+  {id:'30000124',name:'渡邊 紀子',pwd:'30000124',role:'odks',mustChangePwd:true},
+  {id:'30000125',name:'中谷 未紀',pwd:'30000125',role:'odks',mustChangePwd:true},
+  {id:'30000128',name:'木下 純子',pwd:'30000128',role:'odks',mustChangePwd:true},
+  {id:'30000130',name:'嶋川 須美子',pwd:'30000130',role:'odks',mustChangePwd:true},
+  {id:'30000137',name:'宮井 裕子',pwd:'30000137',role:'odks',mustChangePwd:true},
+  {id:'30000151',name:'貴志 美香',pwd:'30000151',role:'odks',mustChangePwd:true},
+  {id:'30000161',name:'田口 真生子',pwd:'30000161',role:'odks',mustChangePwd:true},
+  {id:'30000163',name:'宮本 綾香',pwd:'30000163',role:'odks',mustChangePwd:true},
+  {id:'30000173',name:'小原 綾香',pwd:'30000173',role:'odks',mustChangePwd:true},
+  {id:'30000187',name:'春名 直美',pwd:'30000187',role:'odks',mustChangePwd:true},
+  {id:'30000194',name:'坂井 由衣',pwd:'30000194',role:'odks',mustChangePwd:true},
+  {id:'30000203',name:'櫻井 香奈',pwd:'30000203',role:'odks',mustChangePwd:true},
+  {id:'30000206',name:'貴志 泰三',pwd:'30000206',role:'odks',mustChangePwd:true},
+  {id:'30000211',name:'雑賀 潤治',pwd:'30000211',role:'odks',mustChangePwd:true},
+  {id:'30000229',name:'金山 愛里',pwd:'30000229',role:'odks',mustChangePwd:true},
+  {id:'30000240',name:'井上 千有稀',pwd:'30000240',role:'odks',mustChangePwd:true},
+  {id:'30000243',name:'加納 智子',pwd:'30000243',role:'odks',mustChangePwd:true},
+  {id:'30000248',name:'榮 知佳代',pwd:'30000248',role:'odks',mustChangePwd:true},
+  {id:'30000254',name:'加太 幸子',pwd:'30000254',role:'odks',mustChangePwd:true},
+  {id:'30000255',name:'吉岡 由美',pwd:'30000255',role:'odks',mustChangePwd:true},
+  {id:'30000268',name:'細木 純子',pwd:'30000268',role:'odks',mustChangePwd:true},
+  {id:'30000271',name:'中山 亜沙',pwd:'30000271',role:'odks',mustChangePwd:true},
+  {id:'30000295',name:'若林 梨絵',pwd:'30000295',role:'odks',mustChangePwd:true},
+  {id:'30000340',name:'森本 美千子',pwd:'30000340',role:'odks',mustChangePwd:true},
+  {id:'30000342',name:'小畑 規未',pwd:'30000342',role:'odks',mustChangePwd:true},
+  {id:'30000350',name:'青木 里衣',pwd:'30000350',role:'odks',mustChangePwd:true},
+  {id:'30000359',name:'乙井 恒実',pwd:'30000359',role:'odks',mustChangePwd:true},
+  {id:'30000363',name:'和中 香織',pwd:'30000363',role:'odks',mustChangePwd:true},
+  {id:'30000371',name:'楠見 麻希',pwd:'30000371',role:'odks',mustChangePwd:true},
+  {id:'30000377',name:'濱野 光雄',pwd:'30000377',role:'odks',mustChangePwd:true},
+  {id:'30000391',name:'出口 道広',pwd:'30000391',role:'odks',mustChangePwd:true},
+  {id:'30000409',name:'中西 沙彌嘉',pwd:'30000409',role:'odks',mustChangePwd:true},
+  {id:'30000410',name:'赤井 楓',pwd:'30000410',role:'odks',mustChangePwd:true},
+  {id:'30000418',name:'岡本 友紀',pwd:'30000418',role:'odks',mustChangePwd:true},
+  {id:'30000421',name:'山ノ井 麻紀',pwd:'30000421',role:'odks',mustChangePwd:true},
+  {id:'30000438',name:'西上 恵',pwd:'30000438',role:'odks',mustChangePwd:true},
+  {id:'30000442',name:'政藤 弘美',pwd:'30000442',role:'odks',mustChangePwd:true},
+  {id:'30000457',name:'小林 裕子',pwd:'30000457',role:'odks',mustChangePwd:true},
+  {id:'30000479',name:'紀平 明美',pwd:'30000479',role:'odks',mustChangePwd:true},
+  {id:'30000480',name:'住岡 朱津美',pwd:'30000480',role:'odks',mustChangePwd:true},
+  {id:'30000485',name:'髙落 惠子',pwd:'30000485',role:'odks',mustChangePwd:true},
+  {id:'30000486',name:'吉森 冨美子',pwd:'30000486',role:'odks',mustChangePwd:true},
+  {id:'30000487',name:'尾崎 美代子',pwd:'30000487',role:'odks',mustChangePwd:true},
+  {id:'30000488',name:'弘中 敦子',pwd:'30000488',role:'odks',mustChangePwd:true},
+  {id:'30000491',name:'斎藤 明子',pwd:'30000491',role:'odks',mustChangePwd:true},
+  {id:'30000495',name:'濵口 みえ子',pwd:'30000495',role:'odks',mustChangePwd:true},
+  {id:'30000496',name:'谷山 正子',pwd:'30000496',role:'odks',mustChangePwd:true},
+  {id:'30000497',name:'北野 知子',pwd:'30000497',role:'odks',mustChangePwd:true},
+  {id:'30000500',name:'城 澄子',pwd:'30000500',role:'odks',mustChangePwd:true},
+  {id:'30000505',name:'中谷 恵子',pwd:'30000505',role:'odks',mustChangePwd:true},
+  {id:'30000506',name:'西浦 幸代',pwd:'30000506',role:'odks',mustChangePwd:true},
+  {id:'30000508',name:'勢田 典代',pwd:'30000508',role:'odks',mustChangePwd:true},
+  {id:'30000510',name:'高幣 朋生',pwd:'30000510',role:'odks',mustChangePwd:true},
+  {id:'30000516',name:'高橋 由美子',pwd:'30000516',role:'odks',mustChangePwd:true},
+  {id:'30000521',name:'片山 美紀',pwd:'30000521',role:'odks',mustChangePwd:true},
+  {id:'30000525',name:'坂上 幸恵',pwd:'30000525',role:'odks',mustChangePwd:true},
+  {id:'30000527',name:'和田 明美',pwd:'30000527',role:'odks',mustChangePwd:true},
+  {id:'30000528',name:'辻岡 公徳',pwd:'30000528',role:'odks',mustChangePwd:true},
+  {id:'30000538',name:'河野 万理子',pwd:'30000538',role:'odks',mustChangePwd:true},
+  {id:'30000542',name:'久嶋 麻里子',pwd:'30000542',role:'odks',mustChangePwd:true},
+  {id:'30000543',name:'大橋 由佳子',pwd:'30000543',role:'odks',mustChangePwd:true},
+  {id:'30000547',name:'巽 由佳',pwd:'30000547',role:'odks',mustChangePwd:true},
+  {id:'30000554',name:'堂西 ひとみ',pwd:'30000554',role:'odks',mustChangePwd:true},
+  {id:'30000570',name:'岸川 由紀子',pwd:'30000570',role:'odks',mustChangePwd:true},
+  {id:'30000574',name:'神前 八重子',pwd:'30000574',role:'odks',mustChangePwd:true},
+  {id:'30000583',name:'中村 勤',pwd:'30000583',role:'odks',mustChangePwd:true},
+  {id:'30000601',name:'北山 邦枝',pwd:'30000601',role:'odks',mustChangePwd:true},
+  {id:'30000602',name:'瀧川 朋子',pwd:'30000602',role:'odks',mustChangePwd:true},
+  {id:'30000603',name:'土井 美代',pwd:'30000603',role:'odks',mustChangePwd:true},
+  {id:'30000605',name:'山野 淳子',pwd:'30000605',role:'odks',mustChangePwd:true},
+  {id:'30000606',name:'西山 泰成',pwd:'30000606',role:'odks',mustChangePwd:true},
+  {id:'30000611',name:'打田 津子',pwd:'30000611',role:'odks',mustChangePwd:true},
+  {id:'30000615',name:'田和 香',pwd:'30000615',role:'odks',mustChangePwd:true},
+  {id:'30000619',name:'湯川 英典',pwd:'30000619',role:'odks',mustChangePwd:true},
+  {id:'30000625',name:'佐伯 理恵',pwd:'30000625',role:'odks',mustChangePwd:true},
+  {id:'30000628',name:'浦尾 比佐',pwd:'30000628',role:'odks',mustChangePwd:true},
+  {id:'30000632',name:'大沼 佳代',pwd:'30000632',role:'odks',mustChangePwd:true},
+  {id:'30000639',name:'柿平 ルミ',pwd:'30000639',role:'odks',mustChangePwd:true},
+  {id:'30000671',name:'松下 さくら子',pwd:'30000671',role:'odks',mustChangePwd:true},
+  {id:'30000675',name:'金川 愛里',pwd:'30000675',role:'odks',mustChangePwd:true},
+  {id:'30000688',name:'柳本 麻矢',pwd:'30000688',role:'odks',mustChangePwd:true},
+  {id:'30000703',name:'鈴木 絵理',pwd:'30000703',role:'odks',mustChangePwd:true},
+  {id:'30000713',name:'大村 玲子',pwd:'30000713',role:'odks',mustChangePwd:true},
+  {id:'30000719',name:'丸山 美幸',pwd:'30000719',role:'odks',mustChangePwd:true},
+  {id:'30000732',name:'後藤 淑子',pwd:'30000732',role:'odks',mustChangePwd:true},
+  {id:'30000736',name:'則岡 久美子',pwd:'30000736',role:'odks',mustChangePwd:true},
+  {id:'30000751',name:'東岡 良和',pwd:'30000751',role:'odks',mustChangePwd:true},
+  {id:'30000759',name:'小川由紀',pwd:'30000759',role:'odks',mustChangePwd:true},
+  {id:'30000762',name:'小池 満子',pwd:'30000762',role:'odks',mustChangePwd:true},
+  {id:'30000763',name:'山口 由紀',pwd:'30000763',role:'odks',mustChangePwd:true},
+  {id:'30000764',name:'西原 理恵子',pwd:'30000764',role:'odks',mustChangePwd:true},
+  {id:'30000768',name:'上田 祥世',pwd:'30000768',role:'odks',mustChangePwd:true},
+  {id:'30000772',name:'藤井 千珠子',pwd:'30000772',role:'odks',mustChangePwd:true},
+  {id:'30000775',name:'鍋島 由希絵',pwd:'30000775',role:'odks',mustChangePwd:true},
+  {id:'30000777',name:'殿最 佳織',pwd:'30000777',role:'odks',mustChangePwd:true},
+  {id:'30000783',name:'内田 和沙',pwd:'30000783',role:'odks',mustChangePwd:true},
+  {id:'30000784',name:'小笠原 亜耶',pwd:'30000784',role:'odks',mustChangePwd:true},
+  {id:'30000790',name:'西 京子',pwd:'30000790',role:'odks',mustChangePwd:true},
+  {id:'30000800',name:'森 純子',pwd:'30000800',role:'odks',mustChangePwd:true},
+  {id:'30000813',name:'喜多 恵美',pwd:'30000813',role:'odks',mustChangePwd:true},
+  {id:'30000816',name:'松原 久美子',pwd:'30000816',role:'odks',mustChangePwd:true},
+  {id:'30000818',name:'竹田 賢二',pwd:'30000818',role:'odks',mustChangePwd:true},
+  {id:'30000821',name:'汐﨑 恵里奈',pwd:'30000821',role:'odks',mustChangePwd:true},
+  {id:'30000839',name:'阪本 亜由美',pwd:'30000839',role:'odks',mustChangePwd:true},
+  {id:'30000841',name:'向井 弘樹',pwd:'30000841',role:'odks',mustChangePwd:true},
+  {id:'30000862',name:'井上 賢治',pwd:'30000862',role:'odks',mustChangePwd:true},
+  {id:'30000911',name:'北本 三希子',pwd:'30000911',role:'odks',mustChangePwd:true},
+  {id:'30000912',name:'小坂 惠',pwd:'30000912',role:'odks',mustChangePwd:true},
+  {id:'30000926',name:'塩﨑 智恵',pwd:'30000926',role:'odks',mustChangePwd:true},
+  {id:'30000929',name:'立石 利栄子',pwd:'30000929',role:'odks',mustChangePwd:true},
+  {id:'30000970',name:'松葉 由華',pwd:'30000970',role:'odks',mustChangePwd:true},
+  {id:'30000974',name:'池田 捺未',pwd:'30000974',role:'odks',mustChangePwd:true},
+  {id:'30000977',name:'澤田 早希',pwd:'30000977',role:'odks',mustChangePwd:true},
+  {id:'30000981',name:'後藤 倫子',pwd:'30000981',role:'odks',mustChangePwd:true},
+  {id:'30000983',name:'西川 加津美',pwd:'30000983',role:'odks',mustChangePwd:true},
+  {id:'30000999',name:'田尻 美紀',pwd:'30000999',role:'odks',mustChangePwd:true},
+  {id:'30001007',name:'宮本 真依子',pwd:'30001007',role:'odks',mustChangePwd:true},
+  {id:'30001043',name:'西谷 彩子',pwd:'30001043',role:'odks',mustChangePwd:true},
+  {id:'30001045',name:'長尾 亜矢子',pwd:'30001045',role:'odks',mustChangePwd:true},
+  {id:'30001047',name:'西村 裕子',pwd:'30001047',role:'odks',mustChangePwd:true},
+  {id:'30001054',name:'長田 悦子',pwd:'30001054',role:'odks',mustChangePwd:true},
+  {id:'30001055',name:'樫尾 知子',pwd:'30001055',role:'odks',mustChangePwd:true},
+  {id:'30001057',name:'酒井 由貴',pwd:'30001057',role:'odks',mustChangePwd:true},
+  {id:'30001058',name:'寺田 菜採',pwd:'30001058',role:'odks',mustChangePwd:true},
+  {id:'30001059',name:'田村 達也',pwd:'30001059',role:'odks',mustChangePwd:true},
+  {id:'30001060',name:'森 綾香',pwd:'30001060',role:'odks',mustChangePwd:true},
+  {id:'30001062',name:'前田 弘樹',pwd:'30001062',role:'odks',mustChangePwd:true},
+  {id:'30001075',name:'西野 百合子',pwd:'30001075',role:'odks',mustChangePwd:true},
+  {id:'30001076',name:'林 あゆみ',pwd:'30001076',role:'odks',mustChangePwd:true},
+  {id:'30001078',name:'藤井 充花',pwd:'30001078',role:'odks',mustChangePwd:true},
+  {id:'30001080',name:'小川 敦志',pwd:'30001080',role:'odks',mustChangePwd:true},
+  {id:'30001082',name:'平野 亜以',pwd:'30001082',role:'odks',mustChangePwd:true},
+  {id:'30001084',name:'川端 結衣',pwd:'30001084',role:'odks',mustChangePwd:true},
+  {id:'30001085',name:'後山 彩香',pwd:'30001085',role:'odks',mustChangePwd:true},
+  {id:'30001087',name:'坂口 あゆみ',pwd:'30001087',role:'odks',mustChangePwd:true},
+  {id:'30001120',name:'井原 加奈子',pwd:'30001120',role:'odks',mustChangePwd:true},
+  {id:'30001122',name:'曽和 沙理奈',pwd:'30001122',role:'odks',mustChangePwd:true},
+  {id:'30001123',name:'森 愛恵',pwd:'30001123',role:'odks',mustChangePwd:true},
+  {id:'30001128',name:'根岸 昊輝',pwd:'30001128',role:'odks',mustChangePwd:true},
+  {id:'30001129',name:'小川 奈央',pwd:'30001129',role:'odks',mustChangePwd:true},
+  {id:'30001132',name:'上谷 玉和',pwd:'30001132',role:'odks',mustChangePwd:true},
+  {id:'30001133',name:'山本 美樹',pwd:'30001133',role:'odks',mustChangePwd:true},
+  {id:'30001137',name:'北口 早苗',pwd:'30001137',role:'odks',mustChangePwd:true},
+  {id:'30001138',name:'日潟 貴美子',pwd:'30001138',role:'odks',mustChangePwd:true},
+  {id:'30001140',name:'佐川 歩斗',pwd:'30001140',role:'odks',mustChangePwd:true},
+  {id:'30001143',name:'内田 年美',pwd:'30001143',role:'odks',mustChangePwd:true},
+  {id:'30001147',name:'宮野 さち子',pwd:'30001147',role:'odks',mustChangePwd:true},
+  {id:'30001149',name:'武内 美穂',pwd:'30001149',role:'odks',mustChangePwd:true},
+  {id:'30001150',name:'中川 江理奈',pwd:'30001150',role:'odks',mustChangePwd:true},
+  {id:'30001152',name:'岩西 知子',pwd:'30001152',role:'odks',mustChangePwd:true},
+  {id:'30001153',name:'戸田 真未',pwd:'30001153',role:'odks',mustChangePwd:true},
+  {id:'30001160',name:'青山 ほのみ',pwd:'30001160',role:'odks',mustChangePwd:true},
+  {id:'30001161',name:'渡辺 海星',pwd:'30001161',role:'odks',mustChangePwd:true},
+  {id:'30001166',name:'薮野 琉琥',pwd:'30001166',role:'odks',mustChangePwd:true},
+  {id:'30001167',name:'赤羽 教',pwd:'30001167',role:'odks',mustChangePwd:true},
+  {id:'30001172',name:'福井 寿彩',pwd:'30001172',role:'odks',mustChangePwd:true},
+  {id:'30001179',name:'結城 知亜紀',pwd:'30001179',role:'odks',mustChangePwd:true},
+  {id:'30001180',name:'上野山 慶也',pwd:'30001180',role:'odks',mustChangePwd:true},
+  {id:'30001184',name:'南 由里',pwd:'30001184',role:'odks',mustChangePwd:true},
+  {id:'30001185',name:'藤田 郁美',pwd:'30001185',role:'odks',mustChangePwd:true},
+  {id:'30001186',name:'西田 真依子',pwd:'30001186',role:'odks',mustChangePwd:true},
+  {id:'30001188',name:'照屋 保代',pwd:'30001188',role:'odks',mustChangePwd:true},
+  {id:'30001191',name:'田畑 真弓',pwd:'30001191',role:'odks',mustChangePwd:true},
+  {id:'30001192',name:'大迫 安奈',pwd:'30001192',role:'odks',mustChangePwd:true},
+  {id:'30001193',name:'池田 童菜',pwd:'30001193',role:'odks',mustChangePwd:true},
+  {id:'30001196',name:'前崎 美咲',pwd:'30001196',role:'odks',mustChangePwd:true},
+  {id:'30001199',name:'有馬 果蓮',pwd:'30001199',role:'odks',mustChangePwd:true},
+  {id:'30001200',name:'露峯 恋',pwd:'30001200',role:'odks',mustChangePwd:true},
+  {id:'30001202',name:'中島 和己',pwd:'30001202',role:'odks',mustChangePwd:true},
+  {id:'30001205',name:'中原 麻衣',pwd:'30001205',role:'odks',mustChangePwd:true},
+  {id:'30001206',name:'田中 珠里',pwd:'30001206',role:'odks',mustChangePwd:true},
+  {id:'30001214',name:'畑口 璃久',pwd:'30001214',role:'odks',mustChangePwd:true},
+  {id:'30001218',name:'佐藤 望来',pwd:'30001218',role:'odks',mustChangePwd:true},
+  {id:'30001220',name:'古田 智裕',pwd:'30001220',role:'odks',mustChangePwd:true},
+  {id:'30001221',name:'川口 昌弘',pwd:'30001221',role:'odks',mustChangePwd:true},
+  {id:'30001222',name:'菊田 珠夏',pwd:'30001222',role:'odks',mustChangePwd:true},
+  {id:'30001226',name:'辻内 英香',pwd:'30001226',role:'odks',mustChangePwd:true},
+  {id:'30001229',name:'東本 伎加',pwd:'30001229',role:'odks',mustChangePwd:true},
+  {id:'30001231',name:'堀井 綾乃',pwd:'30001231',role:'odks',mustChangePwd:true},
+  {id:'30001232',name:'永栄 真寿弥',pwd:'30001232',role:'odks',mustChangePwd:true},
+  {id:'30001235',name:'三崎 博子',pwd:'30001235',role:'odks',mustChangePwd:true},
+  {id:'30001236',name:'青木 妙栄子',pwd:'30001236',role:'odks',mustChangePwd:true},
+  {id:'30001242',name:'安平 絢',pwd:'30001242',role:'odks',mustChangePwd:true},
+  {id:'30001243',name:'西 麻彩',pwd:'30001243',role:'odks',mustChangePwd:true},
+  {id:'30001246',name:'中尾 真帆',pwd:'30001246',role:'odks',mustChangePwd:true},
+  {id:'30001251',name:'山本 紋子',pwd:'30001251',role:'odks',mustChangePwd:true},
+  {id:'30001254',name:'葛葉 蘭',pwd:'30001254',role:'odks',mustChangePwd:true},
+  {id:'30001257',name:'有馬 友美',pwd:'30001257',role:'odks',mustChangePwd:true},
+  {id:'30001259',name:'三原 和也',pwd:'30001259',role:'odks',mustChangePwd:true},
+  {id:'30001260',name:'西端 桃香',pwd:'30001260',role:'odks',mustChangePwd:true},
+  {id:'30001261',name:'辻 幸治',pwd:'30001261',role:'odks',mustChangePwd:true},
+  {id:'30001263',name:'小栗 正博',pwd:'30001263',role:'odks',mustChangePwd:true},
+  {id:'30001270',name:'前川 真貴子',pwd:'30001270',role:'odks',mustChangePwd:true},
+  {id:'30001271',name:'中野 倫彰',pwd:'30001271',role:'odks',mustChangePwd:true},
+  {id:'30001272',name:'横山 芽久',pwd:'30001272',role:'odks',mustChangePwd:true},
+  {id:'30001273',name:'櫻井 咲之愛',pwd:'30001273',role:'odks',mustChangePwd:true},
+  {id:'30001274',name:'森田 陽登',pwd:'30001274',role:'odks',mustChangePwd:true},
+  {id:'30001275',name:'中尾 笠之助',pwd:'30001275',role:'odks',mustChangePwd:true},
+  {id:'30001276',name:'秦 一華',pwd:'30001276',role:'odks',mustChangePwd:true},
+  {id:'30001277',name:'塩野 希実',pwd:'30001277',role:'odks',mustChangePwd:true},
+  {id:'30001280',name:'西端 眞理子',pwd:'30001280',role:'odks',mustChangePwd:true},
+  {id:'30001281',name:'貴志 千春',pwd:'30001281',role:'odks',mustChangePwd:true},
+  {id:'30001282',name:'新田 和美',pwd:'30001282',role:'odks',mustChangePwd:true},
+  {id:'30001283',name:'中嶋 菜夢',pwd:'30001283',role:'odks',mustChangePwd:true},
+  {id:'30001284',name:'山中 遼',pwd:'30001284',role:'odks',mustChangePwd:true},
+  {id:'30001291',name:'岡澤 佳代子',pwd:'30001291',role:'odks',mustChangePwd:true},
+  {id:'30001293',name:'伏山 稔子',pwd:'30001293',role:'odks',mustChangePwd:true},
+  {id:'30001294',name:'井川 真理',pwd:'30001294',role:'odks',mustChangePwd:true},
+  {id:'30001296',name:'有井 華澄',pwd:'30001296',role:'odks',mustChangePwd:true},
+  {id:'30001298',name:'髙尾 帆香',pwd:'30001298',role:'odks',mustChangePwd:true},
+  {id:'30001300',name:'玉置 加代',pwd:'30001300',role:'odks',mustChangePwd:true},
+  {id:'30001301',name:'北谷真須美',pwd:'30001301',role:'odks',mustChangePwd:true},
+  {id:'30001302',name:'上野 美宥',pwd:'30001302',role:'odks',mustChangePwd:true},
+  {id:'30001303',name:'宮崎 理嘉',pwd:'30001303',role:'odks',mustChangePwd:true},
+  {id:'30001304',name:'武中 優真',pwd:'30001304',role:'odks',mustChangePwd:true},
+  {id:'30001305',name:'川久保 七幸',pwd:'30001305',role:'odks',mustChangePwd:true},
+  {id:'30001306',name:'奥野 梨乃',pwd:'30001306',role:'odks',mustChangePwd:true},
+  {id:'30001307',name:'後藤 貴史',pwd:'30001307',role:'odks',mustChangePwd:true},
+  {id:'30001310',name:'利光 智栄',pwd:'30001310',role:'odks',mustChangePwd:true},
+  {id:'30001311',name:'岡 優那',pwd:'30001311',role:'odks',mustChangePwd:true},
+  {id:'30001312',name:'高橋 茂雄',pwd:'30001312',role:'odks',mustChangePwd:true},
+  {id:'30001313',name:'木村 実香',pwd:'30001313',role:'odks',mustChangePwd:true},
+  {id:'30001314',name:'土政 春彦',pwd:'30001314',role:'odks',mustChangePwd:true},
+  {id:'30001315',name:'宮下 充栄',pwd:'30001315',role:'odks',mustChangePwd:true},
+  {id:'30001316',name:'和田 紗矢香',pwd:'30001316',role:'odks',mustChangePwd:true},
+  {id:'30001317',name:'田邊 将太郎',pwd:'30001317',role:'odks',mustChangePwd:true},
+];
+/* Users vẫn dùng localStorage (tài khoản/mật khẩu) */
+function getUsers(){const s=localStorage.getItem(UK);if(s)return JSON.parse(s);localStorage.setItem(UK,JSON.stringify(DEFAULT_USERS));return DEFAULT_USERS}
+function saveUsers(u){localStorage.setItem(UK,JSON.stringify(u))}
+
+/* ══ SMART LOAD: chỉ load theo ngày, cache lại ══
+   db     = { empId: { date: { gid: { ti: val } } } }
+   volDb  = { "empId_date": { vgid: { ti: val } } }
+   seisanDb = { "date_gid": { col: { row: val } } }
+   loadedDates = Set của những ngày đã load nippo
+   loadedVolKeys = Set của những "empId_date" đã load vol
+*/
+let db={}, volDb={}, seisanDb={};
+const loadedDates=new Set();
+const loadedVolKeys=new Set();
+
+/* Ghi dữ liệu nippo theo từng ngày của nhân viên */
+function saveDb(){
+  if(!cE||!cDate)return;
+  const data=db[cE]?.[cDate]||{};
+  fbSet('nippo/'+cE+'/'+cDate, data)
+    .catch(e=>console.error('saveDb:',e));
+}
+/* Ghi dữ liệu VOL theo key empId_date */
+function saveVolDb(){
+  const vdate=$('volDate')?.value||tds();
+  const empId=volCurEmp||cU?.id;
+  if(!empId)return;
+  const key=empId+'_'+vdate;
+  const data=volDb[key]||{};
+  fbSet('vol/'+empId+'/'+vdate, data)
+    .catch(e=>console.error('saveVolDb:',e));
+}
+/* Ghi dữ liệu seisan theo ngày+bộ phận */
+function saveSeisanDb(){
+  const seisanDate=$('seisanDatePick')?.value||cDate;
+  if(!seisanDate)return;
+  Object.keys(seisanDb).forEach(key=>{
+    if(key.startsWith(seisanDate+'_')){
+      const gid=key.replace(seisanDate+'_','');
+      fbSet('seisan/'+seisanDate+'/'+gid, seisanDb[key])
+        .catch(e=>console.error('saveSeisanDb:',e));
+    }
+  });
+}
+
+/* Load nippo cho 1 ngày cụ thể (tất cả nhân viên) */
+function loadNippoDate(dateStr){
+  // Không cache — luôn load
+  loadedDates.add(dateStr);
+  return fbDB.ref('nippo').orderByKey().once('value').then(snap=>{
+    const allData=snap.val()||{};
+    // Chỉ lấy data của ngày này từ mỗi nhân viên
+    Object.keys(allData).forEach(empId=>{
+      const dayData=allData[empId]?.[dateStr];
+      if(dayData){
+        if(!db[empId])db[empId]={};
+        db[empId][dateStr]=dayData;
+      }
+    });
+  }).catch(()=>{});
+}
+
+/* Load nippo hiệu quả — chỉ lấy ngày cần */
+function loadNippoDateEfficient(dateStr){
+  // Không dùng cache → luôn load từ Firebase để đảm bảo đồng bộ
+  loadedDates.add(dateStr);
+  const users=getUsers().filter(u=>u.id!=='admin');
+  const promises=users.map(u=>
+    fbDB.ref('nippo/'+u.id+'/'+dateStr).once('value').then(snap=>{
+      const data=snap.val();
+      if(!db[u.id])db[u.id]={};
+      db[u.id][dateStr]=data||{};
+    }).catch(()=>{})
+  );
+  return Promise.all(promises);
+}
+
+/* Load VOL cho 1 nhân viên + ngày */
+function loadVolKey(empId, dateStr){
+  const key=empId+'_'+dateStr;
+  if(loadedVolKeys.has(key))return Promise.resolve();
+  loadedVolKeys.add(key);
+  return fbDB.ref('vol/'+empId+'/'+dateStr).once('value').then(snap=>{
+    const data=snap.val();
+    if(data)volDb[key]=data;
+  }).catch(()=>{});
+}
+
+/* Load VOL tất cả nhân viên cho 1 ngày (dùng cho seisan+export) */
+function loadVolAllForDate(dateStr){
+  const users=getUsers().filter(u=>u.id!=='admin');
+  const promises=users.map(u=>loadVolKey(u.id,dateStr));
+  return Promise.all(promises);
+}
+
+/* Load seisan cho 1 ngày */
+function loadSeisanDate(dateStr){
+  return fbDB.ref('seisan/'+dateStr).once('value').then(snap=>{
+    const data=snap.val()||{};
+    Object.keys(data).forEach(gid=>{
+      seisanDb[dateStr+'_'+gid]=data[gid];
+    });
+  }).catch(()=>{});
+}
+
+/* Lắng nghe realtime CHỈ ngày hôm nay */
+let realtimeListeners=[];
+function clearRealtimeListeners(){
+  realtimeListeners.forEach(({ref,cb})=>ref.off('value',cb));
+  realtimeListeners=[];
+}
+function listenToday(dateStr){
+  clearRealtimeListeners();
+  const users=getUsers().filter(u=>u.id!=='admin');
+  users.forEach(u=>{
+    const ref=fbDB.ref('nippo/'+u.id+'/'+dateStr);
+    const cb=snap=>{
+      const data=snap.val();
+      if(!db[u.id])db[u.id]={};
+      db[u.id][dateStr]=data||{};
+      // Cập nhật UI khi đúng nhân viên + ngày đang xem
+      if(cU&&cDate===dateStr&&cE===u.id){
+        const focused=document.activeElement;
+        const isTyping=focused&&focused.classList.contains('all-inp');
+        if(!isTyping)lS();
+      }
+    };
+    ref.on('value',cb);
+    realtimeListeners.push({ref,cb});
+  });
+}
+
+/* Lắng nghe realtime cho 1 nhân viên cụ thể (khi admin chọn nhân viên khác) */
+function listenEmployee(empId, dateStr){
+  // Tìm listener cũ của empId nếu có, nếu chưa có thì không cần thêm
+  // (đã được listenToday bao phủ rồi)
+  // Chỉ cần đảm bảo db có data mới nhất → đã handle trong loadNippoDateEfficient
+}
+
+function initFirebaseListeners(){
+  const today=tds();
+  // Load dữ liệu hôm nay — KHÔNG cache (xóa sau khi load)
+  // để realtime listener luôn cập nhật được
+  loadNippoDateEfficient(today).then(()=>{
+    loadedDates.delete(today); // Bỏ cache → listener có thể update
+    if(cU)lS();
+  });
+  listenToday(today);
+}
+
+const RL=[
+  [{id:'G1',label:'NIKKI_LS & ACS',tasks:['荷受/入荷検品','入荷格納','メンテ','ピック','店振り','加工','出荷','棚卸','伝票','値作']}],
+  [{id:'G2',label:'NIKKI_KIDS',tasks:['荷受/入荷検品','入荷格納','メンテ','ピック','店振り','加工','出荷','棚卸','伝票','値作']}],
+  [{id:'G3',label:'Nikki 返品業務',tasks:['荷受け','入荷検品','仕分け','受付','照合','再生加工','検針','SKU仕分け','在庫計上事務','再生完了事務']}],
+  [{id:'G4',label:'ShopLogi',tasks:['荷受け','入荷検品','入荷格納','ピック','出荷検品','梱包','出荷','メンテ','事務','伝票セット']}],
+  [{id:'G5',label:'WEGO',tasks:['返品仕分け','返品格納','出荷(箱まき)','出荷(ケース)','品質検査(EC)','品質検査(加工)','メンテ','貝塚持込','棚卸','別途作業']},
+   {id:'G6',label:'日本郵便',tasks:['荷受・入荷','出荷','伝票セット','事務業務','入荷・引取','積込立会','ピッキング','配車','入荷・格納','出荷']}],
+  [{id:'G7',label:'大十',tasks:['荷受け','格納','ピック','積み込み','事務']},
+   {id:'G8',label:'三花',tasks:['入荷','出荷','管理','配送業務(三葉)','(空白)']}],
+  [{id:'G9',label:'光陽商事',tasks:['入荷','格納','1F小分け','1Fケース出荷','2F集荷','2F検品・梱包','2Fコース確認','2F持ち調査','補充','(空白)']}],
+  [{id:'G10',label:'アストライン',tasks:['コンテナデバン','路線受け','入荷(格納)','箱作・ラベル貼','トータルピック','摘み取り','棚卸(検品)','サンプル出荷','値札付替え','現場管理・事務 他']}],
+  [{id:'G11',label:'ささげ',tasks:['入荷','採寸・撮影','出荷','事務作業']},
+   {id:'G12',label:'業務外作業',tasks:['倉庫清掃','5S活動']},
+   {id:'G13',label:'岩出スポット',tasks:['KYT活動']},
+   {id:'G14',label:'総務事務',tasks:['外部派遣 など','勤怠確認/日報入力']},
+   {id:'G15',label:'送迎',tasks:['送迎']}],
+];
+const AG=RL.flat();
+
+/* ── SEISAN MAPPING: G(日報) → VG(VOL) by task index ──
+   VOL data (kết quả) + 日報 MH → 生産性 tự động tính
+   G6(日本郵便) → tasks 0-3=VG6a, 4-7=VG6b, 8-9=VG6c
+*/
+const SEISAN_MAP = {
+  'G1':  [{vgid:'VG1', ti:0},{vgid:'VG1',ti:1},{vgid:'VG1',ti:2},{vgid:'VG1',ti:3},{vgid:'VG1',ti:4},{vgid:'VG1',ti:5},{vgid:'VG1',ti:6},{vgid:'VG1',ti:7},{vgid:'VG1',ti:8},{vgid:'VG1',ti:9}],
+  'G2':  [{vgid:'VG2', ti:0},{vgid:'VG2',ti:1},{vgid:'VG2',ti:2},{vgid:'VG2',ti:3},{vgid:'VG2',ti:4},{vgid:'VG2',ti:5},{vgid:'VG2',ti:6},{vgid:'VG2',ti:7},{vgid:'VG2',ti:8},{vgid:'VG2',ti:9}],
+  'G3':  [{vgid:'VG3', ti:0},{vgid:'VG3',ti:1},{vgid:'VG3',ti:2},{vgid:'VG3',ti:3},{vgid:'VG3',ti:4},{vgid:'VG3',ti:5},{vgid:'VG3',ti:6},{vgid:'VG3',ti:7},{vgid:'VG3',ti:8},{vgid:'VG3',ti:9}],
+  'G4':  [{vgid:'VG4', ti:0},{vgid:'VG4',ti:1},{vgid:'VG4',ti:2},{vgid:'VG4',ti:3},{vgid:'VG4',ti:4},{vgid:'VG4',ti:5},{vgid:'VG4',ti:6},{vgid:'VG4',ti:7},{vgid:'VG4',ti:8},{vgid:'VG4',ti:9}],
+  'G5':  [{vgid:'VG5', ti:0},{vgid:'VG5',ti:1},{vgid:'VG5',ti:2},{vgid:'VG5',ti:3},{vgid:'VG5',ti:4},{vgid:'VG5',ti:5},{vgid:'VG5',ti:6},{vgid:'VG5',ti:7},{vgid:'VG5',ti:8},{vgid:'VG5',ti:9}],
+  'G6':  [{vgid:'VG6a',ti:0},{vgid:'VG6a',ti:1},{vgid:'VG6a',ti:2},{vgid:'VG6a',ti:3},{vgid:'VG6b',ti:0},{vgid:'VG6b',ti:1},{vgid:'VG6b',ti:2},{vgid:'VG6b',ti:3},{vgid:'VG6c',ti:0},{vgid:'VG6c',ti:1}],
+  'G7':  [{vgid:'VG7', ti:0},{vgid:'VG7',ti:1},{vgid:'VG7',ti:2},{vgid:'VG7',ti:3},{vgid:'VG7',ti:4}],
+  'G8':  [{vgid:'VG8', ti:0},{vgid:'VG8',ti:1},{vgid:'VG8',ti:2},{vgid:'VG8',ti:3}],
+  'G9':  [{vgid:'VG9', ti:0},{vgid:'VG9',ti:1},{vgid:'VG9',ti:2},{vgid:'VG9',ti:3},{vgid:'VG9',ti:4},{vgid:'VG9',ti:5},{vgid:'VG9',ti:6},{vgid:'VG9',ti:7},{vgid:'VG9',ti:8}],
+  'G10': [{vgid:'VG10',ti:0},{vgid:'VG10',ti:1},{vgid:'VG10',ti:2},{vgid:'VG10',ti:3},{vgid:'VG10',ti:4},{vgid:'VG10',ti:5},{vgid:'VG10',ti:6},{vgid:'VG10',ti:7},{vgid:'VG10',ti:8},{vgid:'VG10',ti:9}],
+  'G11': [{vgid:'VG11',ti:0},{vgid:'VG11',ti:1},{vgid:'VG11',ti:2},{vgid:'VG11',ti:3}],
+  'G12': [{vgid:'VG12',ti:0},{vgid:'VG12',ti:1}],
+  'G13': [{vgid:'VG13',ti:0}],
+  'G14': [{vgid:'VG14',ti:0},{vgid:'VG14',ti:1}],
+  'G15': [{vgid:'VG15',ti:0}],
+};
+
+/* Tính tổng VOL (kết quả) cho 1 task của 1 bộ phận theo ngày */
+function calcVolForTask(gid, taskIdx, dateStr){
+  const map = SEISAN_MAP[gid];
+  if(!map||!map[taskIdx])return 0;
+  const {vgid,ti}=map[taskIdx];
+  const users=getUsers().filter(u=>u.id!=='admin');
+  let total=0;
+  users.forEach(u=>{
+    const v=parseFloat(volDb[u.id+'_'+dateStr]?.[vgid]?.[ti]||0);
+    if(!isNaN(v))total+=v;
+  });
+  return Math.round(total*100)/100;
+}
+
+/* Tính tổng MH (từ 日報) cho 1 task của 1 bộ phận theo ngày */
+function calcMhForTask(gid, taskIdx, dateStr){
+  const users=getUsers().filter(u=>u.id!=='admin');
+  let total=0;
+  users.forEach(u=>{
+    const v=parseFloat(db[u.id]?.[dateStr]?.[gid]?.[taskIdx]||0);
+    if(!isNaN(v))total+=v;
+  });
+  return Math.round(total*100)/100;
+}
+
+/* VOL_ROWS — same structure as RL, each sub-array = one row of tables */
+const VOL_ROWS=[
+  [{id:'VG1',label:'NIKKI_LS & ACS',tasks:['荷受/入荷検品','入荷格納','メンテ','ピック','店振り','加工','出荷','棚卸','伝発','値作']},
+   {id:'VG1x',label:'外部応援',tasks:['応援']}],
+  [{id:'VG2',label:'NIKKI_KIDS',tasks:['荷受/入荷検品','入荷格納','メンテ','ピック','店振り','加工','出荷','棚卸','伝発','値作']}],
+  [{id:'VG3',label:'Nikki 返品業務',tasks:['荷受け','入荷検品','仕分け','受付','照合','再生加工','検針','SKU仕分け','在庫計上事務','再生完了事務']}],
+  [{id:'VG4',label:'ShopLogi',tasks:['荷受け','入荷検品','入荷格納','ピック','出荷検品','梱包','出荷','メンテ','事務','伝票セット']}],
+  [{id:'VG5',label:'WEGO',tasks:['返品仕分け','返品格納','出荷（種まき）','出荷（ケース）','品質検品（EC）','品質検品（加工）','メンテ','貝塚持込','棚卸','別途作業']}],
+  [{id:'VG6a',label:'日本郵便',tasks:['荷受・入荷','出荷','伝票セット','事務業務']},
+   {id:'VG6b',label:'つばめ急便',tasks:['入荷・引取','積込立会','ピッキング','配車']},
+   {id:'VG6c',label:'ジョエルロティ',tasks:['入荷・格納','出荷']}],
+  [{id:'VG7',label:'大十',tasks:['荷受け','格納','ピック','積み込み','事務']},
+   {id:'VG8',label:'三花',tasks:['入荷','出荷','管理','配送業務（三菱）']}],
+  [{id:'VG9',label:'光陽商事',tasks:['入荷','格納','1F 小分け','1F ケース出荷','2F 集品','2F 検品・梱包','2F コース確認','2F 待ち調査','事務']}],
+  [{id:'VG10',label:'アストライン',tasks:['コンテナデバン','路線受け','入庫（格納）','箱作・ラベル貼り','トータルピック','摘み取り','梱包（検品）','サンプル出荷','値札付け替え','現場管理・事務 他']}],
+  [{id:'VG11',label:'ささげ',tasks:['入荷','採寸・撮影','出荷','事務作業']},
+   {id:'VG12',label:'業務外作業',tasks:['倉庫清掃','5S活動']},
+   {id:'VG13',label:'岩出スポット',tasks:['KYT活動']},
+   {id:'VG14',label:'総務事務',tasks:['外部派遣 など','勤怠確定/日報入力']},
+   {id:'VG15',label:'送迎',tasks:['送迎']}],
+];
+function allVolSecs(){const r=[];VOL_ROWS.forEach(rg=>rg.forEach(s=>r.push(s)));return r;}
+
+const HR=['9時','10時','11時','12時','13時','14時','15時','16時','17時','18時','19時','20時'];
+const MN=['15','30','45','60'];
+let cU=null,cDate='',cE='',volCurEmp='';
+let editingId=null,selectedRole='emp';
+let selEmps=new Set(),selDepts=new Set(AG.map(g=>g.id));
+let expEmpSQ='',userSQ='';
+let empDropOpen=false,volEmpDropOpen=false,activePicker=null;
+let volBuilt=false;
+
+/* ══ SAVE COUNT & DATE LOCK SYSTEM ══
+   Key: 'odk_savecount_v1' → {empId: {date: {nippo:n, vol:n, seisan:n}}}
+   Giới hạn: 3 lần/ngày cho tài khoản thường (không áp dụng admin/管理者)
+   Ngày cũ: chỉ xem, nút save bị tối
+*/
+const SCK='odk_savecount_v1';
+function getSaveCounts(){try{return JSON.parse(localStorage.getItem(SCK)||'{}')}catch(e){return{}}}
+function saveSaveCounts(d){localStorage.setItem(SCK,JSON.stringify(d))}
+const MAX_SAVE=3;
+
+function isSuperAdmin(){return cU&&(cU.role==='superadmin'||cU._effectiveRole==='superadmin'||cU.id==='admin');}
+function isAdmin(){return cU&&(cU.role==='admin'||cU._effectiveRole==='admin'||isSuperAdmin());}
+function isManager(){return cU&&(cU._effectiveRole==='manager');}
+function isAdminOrManager(){return cU&&(isAdmin()||isManager());}
+/* SuperAdmin: toàn quyền kể cả thêm/xóa admin khác */
+function isToday(dateStr){return dateStr===tds();}
+
+function getSaveCount(empId,dateStr,type){
+  const d=getSaveCounts();
+  return d[empId]?.[dateStr]?.[type]||0;
+}
+function incrementSaveCount(empId,dateStr,type){
+  const d=getSaveCounts();
+  if(!d[empId])d[empId]={};
+  if(!d[empId][dateStr])d[empId][dateStr]={};
+  d[empId][dateStr][type]=(d[empId][dateStr][type]||0)+1;
+  saveSaveCounts(d);
+  return d[empId][dateStr][type];
+}
+
+function canSave(dateStr,type){
+  if(isAdminOrManager())return true;
+  if(!isToday(dateStr))return false;
+  const cnt=getSaveCount(cE||cU.id,dateStr,type);
+  return cnt<MAX_SAVE;
+}
+
+function updateSaveBtnState(){
+  if(!cU)return;
+  const today=tds();
+  const bS=$('bSave'),bS2=$('bSave2'),badge=$('saveCountBadge');
+  if(bS){
+    const isOld=cDate&&cDate!==today;
+    if(isAdminOrManager()){
+      bS.classList.remove('btn-disabled');if(bS2)bS2.classList.remove('btn-disabled');
+      if(badge)badge.textContent='';
+    } else if(isOld){
+      bS.classList.add('btn-disabled');if(bS2)bS2.classList.add('btn-disabled');
+      if(badge){badge.textContent='🔒 過去データ';badge.className='save-count-badge save-count-warn';}
+    } else {
+      const cnt=getSaveCount(cE,today,'nippo');
+      const rem=MAX_SAVE-cnt;
+      bS.classList.toggle('btn-disabled',cnt>=MAX_SAVE);
+      if(bS2)bS2.classList.toggle('btn-disabled',cnt>=MAX_SAVE);
+      if(badge){
+        badge.textContent=cnt>=MAX_SAVE?'保存上限':'保存残り'+rem+'回';
+        badge.className='save-count-badge'+(cnt>=MAX_SAVE?' save-count-warn':'');
+      }
+    }
+  }
+}
+
+function updateVolSaveBtnState(){
+  if(!cU)return;
+  const today=tds();
+  const vdate=$('volDate')?$('volDate').value:'';
+  const bV=$('bVolSave'),badge=$('volSaveCountBadge');
+  if(!bV)return;
+  if(isAdminOrManager()){
+    bV.classList.remove('btn-disabled');if(badge)badge.textContent='';
+  } else if(vdate&&vdate!==today){
+    bV.classList.add('btn-disabled');
+    if(badge){badge.textContent='🔒 過去データ';badge.className='save-count-badge save-count-warn';}
+  } else {
+    const cnt=getSaveCount(volCurEmp||cU.id,today,'vol');
+    const rem=MAX_SAVE-cnt;
+    bV.classList.toggle('btn-disabled',cnt>=MAX_SAVE);
+    if(badge){
+      badge.textContent=cnt>=MAX_SAVE?'保存上限':'保存残り'+rem+'回';
+      badge.className='save-count-badge'+(cnt>=MAX_SAVE?' save-count-warn':'');
+    }
+  }
+}
+
+function updateSeisanSaveBtnState(){
+  if(!cU)return;
+  const today=tds();
+  const seisanDate=$('seisanDatePick')?.value||cDate;
+  const bSe=$('bSeisanSave'),badge=$('seisanSaveCountBadge');
+  if(!bSe)return;
+  if(isAdminOrManager()){
+    bSe.classList.remove('btn-disabled');if(badge)badge.textContent='';
+  } else if(seisanDate&&seisanDate!==today){
+    bSe.classList.add('btn-disabled');
+    if(badge){badge.textContent='🔒 過去データ';badge.className='save-count-badge save-count-warn';}
+  } else {
+    const cnt=getSaveCount(cE,today,'seisan');
+    const rem=MAX_SAVE-cnt;
+    bSe.classList.toggle('btn-disabled',cnt>=MAX_SAVE);
+    if(badge){
+      badge.textContent=cnt>=MAX_SAVE?'保存上限':'保存残り'+rem+'回';
+      badge.className='save-count-badge'+(cnt>=MAX_SAVE?' save-count-warn':'');
+    }
+  }
+}
+
+const $=id=>document.getElementById(id);
+const DOW=['日','月','火','水','木','金','土'];
+const tds=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const fd=s=>{if(!s)return'—月—日';const d=new Date(s+'T00:00:00');return d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日（'+DOW[d.getDay()]+'）'};
+const fdShort=s=>{if(!s)return'—月—日';const d=new Date(s+'T00:00:00');return(d.getMonth()+1)+'月'+d.getDate()+'日（'+DOW[d.getDay()]+'）'};
+const rc=()=>{if(!db[cE])db[cE]={};if(!db[cE][cDate])db[cE][cDate]={};return db[cE][cDate]};
+
+/* Lấy nhãn phân loại nhân viên: ODK籍 / ODKS籍 / 管理者 */
+function getEmpTypeLabel(userId){
+  const u=getUsers().find(u=>u.id===userId);
+  if(!u)return'社員';
+  const role=getEffectiveRole(u);
+  if(role==='odks')return'ODKS籍';
+  if(role==='manager')return'管理者';
+  if(role==='admin'||role==='superadmin')return'ADMIN';
+  return'ODK籍';
+}
+
+/* Cập nhật label 社員 → ODK籍 / ODKS籍 khi chọn nhân viên */
+function updateEmpTypeLabel(userId){
+  const lbl=$('empTypeLabel');
+  if(!lbl)return;
+  if(!isAdminOrManager()||userId===cU?.id){
+    lbl.textContent='社員';return;
+  }
+  lbl.textContent=getEmpTypeLabel(userId);
+}
+const CM=id=>$(id).classList.remove('on');
+const ai=i=>{i.addEventListener('input',()=>oI(i));i.addEventListener('blur',()=>oB(i));i.addEventListener('focus',()=>i.select())};
+
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  if(name==='main')$('pageMain').classList.add('active');
+  else if(name==='vol'){
+    if(cU&&cU._effectiveRole==='odks'){sT('⚠ この機能へのアクセス権がありません');$('pageMain').classList.add('active');return;}
+    $('pageVol').classList.add('active');initVol();
+  }
+  window.scrollTo(0,0);
+}
+function togglePw(id,btn){const i=$(id);if(i.type==='password'){i.type='text';btn.textContent='🙈';}else{i.type='password';btn.textContent='👁';}}
+function selectRole(r){
+  selectedRole=r;
+  $('rcEmp').className='role-card'+(r==='emp'?' active-odk':'');
+  if($('rcOdks'))$('rcOdks').className='role-card'+(r==='odks'?' active-odks':'');
+  if($('rcManager'))$('rcManager').className='role-card'+(r==='manager'?' active-admin':'');
+  if($('rcAdmin'))$('rcAdmin').className='role-card'+(r==='admin'?' active-admin':'');
+}
+
+/* MAIN EMP DROPDOWN */
+function buildEmpDrop(q=''){
+  const users=getUsers().filter(u=>u.archived!==true).sort((a,b)=>a.id.localeCompare(b.id));
+  const sq=q.toLowerCase();
+  const filtered=users.filter(u=>!sq||u.id.toLowerCase().includes(sq)||u.name.toLowerCase().includes(sq));
+  const list=$('empDropList');list.innerHTML='';
+  if(!filtered.length){list.innerHTML='<div class="emp-drop-empty">該当なし</div>';$('empDropInfo').textContent='';return;}
+  $('empDropInfo').textContent=`${filtered.length}名 / 全${users.length}名`;
+  filtered.forEach(u=>{
+    const d=document.createElement('div');d.className='emp-drop-item'+(u.id===cE?' selected':'');
+    d.innerHTML=`<span class="edi-id">${u.id}</span><span class="edi-name">${u.name}</span><span class="edi-badge ${u.role==='admin'?'edi-badge-admin':'edi-badge-emp'}">${u.role==='admin'?'管理者':'一般'}</span>`;
+    d.addEventListener('click',()=>{
+      cE=u.id;
+      $('empSelLabel').textContent=u.id+'　'+u.name;
+      updateEmpTypeLabel(u.id);
+      closeEmpDrop();
+      // Force reload từ Firebase (xóa cache ngày hiện tại của nhân viên này)
+      loadedDates.delete(cDate);
+      loadNippoDateEfficient(cDate).then(()=>{
+        loadedDates.delete(cDate); // Xóa cache sau load để realtime listener hoạt động
+        lS();
+      });
+    });
+    list.appendChild(d);
+  });
+}
+function openEmpDrop(){$('empDropdown').classList.add('open');$('empDropSearch').value='';buildEmpDrop();empDropOpen=true;setTimeout(()=>$('empDropSearch').focus(),50);}
+function closeEmpDrop(){$('empDropdown').classList.remove('open');empDropOpen=false;}
+
+/* VOL EMP DROPDOWN */
+function buildVolEmpDrop(q=''){
+  const all=getUsers().filter(u=>u.archived!==true).sort((a,b)=>a.id.localeCompare(b.id));
+  const sq=q.toLowerCase();
+  const pool=isAdminOrManager()?all:all.filter(u=>u.id===cU.id);
+  const filtered=pool.filter(u=>!sq||u.id.toLowerCase().includes(sq)||u.name.toLowerCase().includes(sq));
+  const list=$('volEmpDropList');list.innerHTML='';
+  if(!filtered.length){list.innerHTML='<div class="emp-drop-empty">該当なし</div>';$('volEmpDropInfo').textContent='';return;}
+  $('volEmpDropInfo').textContent=`${filtered.length}名 / 全${pool.length}名`;
+  filtered.forEach(u=>{
+    const d=document.createElement('div');d.className='emp-drop-item'+(u.id===volCurEmp?' selected':'');
+    d.innerHTML=`<span class="edi-id">${u.id}</span><span class="edi-name">${u.name}</span><span class="edi-badge ${u.role==='admin'?'edi-badge-admin':'edi-badge-emp'}">${u.role==='admin'?'管理者':'一般'}</span>`;
+    d.addEventListener('click',()=>{volCurEmp=u.id;$('volEmpSelLabel').textContent=u.id+'　'+u.name;loadVol();closeVolEmpDrop();});
+    list.appendChild(d);
+  });
+}
+function openVolEmpDrop(){
+  if(cU._effectiveRole!=='admin'&&cU._effectiveRole!=='manager')return;
+  $('volEmpDropdown').classList.add('open');$('volEmpDropSearch').value='';buildVolEmpDrop();volEmpDropOpen=true;setTimeout(()=>$('volEmpDropSearch').focus(),50);
+}
+function closeVolEmpDrop(){$('volEmpDropdown').classList.remove('open');volEmpDropOpen=false;}
+
+/* ROLE DETECTION by employee ID prefix
+   - starts with '300' → ODKS籍 (role: 'odks') → main page only
+   - starts with '4'   → ODK籍  (role: 'emp')  → all features except admin
+   - role === 'admin'  → admin → all features
+*/
+function getEffectiveRole(u){
+  if(u.role==='superadmin')return'superadmin';
+  if(u.role==='admin')return'admin';
+  if(u.role==='manager')return'manager';
+  if(u.role==='odks')return'odks';
+  if(u.role==='emp')return'emp';
+  const sid=String(u.id);
+  if(/^3000\d{4}$/.test(sid))return'odks';
+  return'emp';
+}
+// isManager defined above
+
+/* LOGIN */
+function doLogin(){
+  const id=$('lid').value.trim(),pw=$('lpwd').value;
+  const u=getUsers().find(u=>u.id===id&&u.pwd===pw);
+  if(!u){$('lerr').style.display='block';return;}
+  cU=u;
+  cU._effectiveRole=getEffectiveRole(u);
+  $('loginScreen').style.display='none';
+  $('tbUser').textContent=u.name+'（'+u.id+'）';
+  // Affiliation badge center
+  const affil=$('tbAffil');
+  if(cU._effectiveRole==='odks'){affil.textContent='ODKS籍';affil.className='tb-affil tb-affil-odks';affil.style.display='block';}
+  else if(cU._effectiveRole==='emp'){affil.textContent='ODK籍';affil.className='tb-affil tb-affil-odk';affil.style.display='block';}
+  else if(cU._effectiveRole==='manager'){affil.textContent='管理者';affil.className='tb-affil tb-affil-admin';affil.style.display='block';}
+  else if(cU._effectiveRole==='superadmin'){affil.textContent='ADMIN';affil.className='tb-affil tb-affil-admin';affil.style.display='block';}
+  else if(cU._effectiveRole==='admin'){affil.textContent='ADMIN';affil.className='tb-affil tb-affil-admin';affil.style.display='block';}
+  // 社員管理: admin + manager
+  $('bUsers').style.display=isAdminOrManager()?'inline-block':'none';
+  // VOL / 生産性 / Excel出力: admin + emp (ODK籍) only, hidden for odks
+  const isOdks=cU._effectiveRole==='odks';
+  $('bVol').style.display=isOdks?'none':'inline-block';
+  $('bSeisan').style.display=isOdks?'none':'inline-block';
+  $('bExcel').style.display=isOdks?'none':'inline-block';
+  // 社員選択: admin + manager
+  if(!isAdminOrManager()){$('empSelBtn').disabled=true;$('empSelBtn').style.opacity='.7';$('empSelBtn').style.cursor='default';}
+  cDate=tds();cE=u.id;$('datePick').value=cDate;$('empSelLabel').textContent=u.id+'　'+u.name;
+  updateEmpTypeLabel(u.id);
+  showPage('main');bMT();bTT();document.querySelectorAll('.all-inp').forEach(ai);lS();$('mainDateLabel').textContent=fd(cDate);
+  // Lưu session để giữ đăng nhập khi reload
+  sessionStorage.setItem('odk_session_v1', JSON.stringify({id:u.id, pwd:u.pwd}));
+  // First-login password change requirement
+  if(u.mustChangePwd&&u.role!=='admin'){
+    $('cpwdNew').value='';$('cpwdConfirm').value='';$('cpwdErr').style.display='none';
+    $('cpwdModal').style.display='flex';
+    setTimeout(()=>$('cpwdNew').focus(),100);
+  }
+}
+function doLogout(){
+  sessionStorage.removeItem('odk_session_v1');
+  cU=null;
+  const lbl=$('empTypeLabel');if(lbl)lbl.textContent='社員';$('loginScreen').style.display='flex';document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  $('lid').value=$('lpwd').value='';$('lerr').style.display='none';$('bUsers').style.display='none';$('bVol').style.display='inline-block';$('bSeisan').style.display='inline-block';$('bExcel').style.display='inline-block';$('tbAffil').style.display='none';
+  $('empSelBtn').disabled=false;$('empSelBtn').style.opacity='1';$('empSelBtn').style.cursor='pointer';
+  closeEmpDrop();closeVolEmpDrop();volBuilt=false;
+}
+
+/* SAVE/LOAD */
+function doSave(){
+  // Check ngày cũ (chỉ áp dụng với nhân viên thường)
+  if(!isAdminOrManager()&&cDate!==tds()){sT('⚠ 過去のデータは変更できません');return;}
+  // Check giới hạn lưu (chỉ áp dụng với nhân viên thường)
+  if(!isAdminOrManager()){
+    const cnt=getSaveCount(cE,cDate,'nippo');
+    if(cnt>=MAX_SAVE){sT('⚠ 管理者にデータ変更をご連絡ください');return;}
+  }
+  // Check dữ liệu trống (chỉ với nhân viên thường — admin có thể xóa dữ liệu)
+  if(!isAdminOrManager()){
+    let hasData=false;
+    document.querySelectorAll('.all-inp').forEach(i=>{const v=parseFloat(i.value);if(!isNaN(v)&&v>0)hasData=true;});
+    if(!hasData){sT('⚠ データが入力されていません');return;}
+  }
+  // Ghi dữ liệu vào db[cE][cDate]
+  const r=rc();
+  // Xóa data cũ trước khi ghi mới để tránh dữ liệu thừa
+  Object.keys(r).forEach(k=>delete r[k]);
+  document.querySelectorAll('.all-inp').forEach(i=>{
+    const v=parseFloat(i.value),g=i.dataset.g,t=i.dataset.t;
+    if(g&&t!==undefined){if(!isNaN(v)&&v>0){if(!r[g])r[g]={};r[g][t]=String(v);}}
+  });
+  saveDb();
+  if(!isAdminOrManager()){incrementSaveCount(cE,cDate,'nippo');updateSaveBtnState();}
+  const bSd=$('bSave'),bS2d=$('bSave2');
+  if(bSd)bSd.classList.remove('save-active');
+  if(bS2d)bS2d.classList.remove('save-active');
+  sT('✓ '+( cE===cU.id ? '' : (getUsers().find(u=>u.id===cE)?.name||cE)+'の')+'データを保存しました');
+}
+function mainShiftDate(d){
+  const dt=new Date(($('datePick').value||tds())+'T00:00:00');dt.setDate(dt.getDate()+d);
+  const fmt=x=>x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
+  $('datePick').value=fmt(dt);cDate=fmt(dt);
+  loadedDates.delete(cDate); // Luôn xóa cache khi đổi ngày
+  loadNippoDateEfficient(cDate).then(()=>{
+    loadedDates.delete(cDate);
+    lS();
+  });
+}
+function lS(){
+  cDate=$('datePick').value;$('mainDateLabel').textContent=fd(cDate);
+  // Hiện thông báo khi admin xem dữ liệu người khác
+  if(isAdminOrManager()&&cE&&cU&&cE!==cU.id){
+    const emp=getUsers().find(u=>u.id===cE);
+    $('mainDateLabel').textContent=fd(cDate)+(emp?' 【'+emp.name+'のデータ】':'');
+  }
+  const r=db[cE]?.[cDate]||{};
+  document.querySelectorAll('.all-inp').forEach(i=>{i.value='';i.classList.remove('hv','bad')});
+  // Reset save-active khi đổi ngày/nhân viên
+  const bSr=$('bSave'),bS2r=$('bSave2');
+  if(bSr)bSr.classList.remove('save-active');
+  if(bS2r)bS2r.classList.remove('save-active');
+  AG.forEach(g=>{const gd=r[g.id];if(!gd)return;Object.entries(gd).forEach(([ti,v])=>{const i=document.querySelector(`.grp-inp[data-g="${g.id}"][data-t="${ti}"]`);if(i&&v){i.value=v;i.classList.toggle('hv',parseFloat(v)>0);}});});
+  ['GAIBOU','ENSEN'].forEach(gk=>{const gd=r[gk];if(!gd)return;Object.entries(gd).forEach(([t,v])=>{const i=document.querySelector(`.all-inp[data-g="${gk}"][data-t="${t}"]`);if(i&&v){i.value=v;i.classList.toggle('hv',parseFloat(v)>0);}});});
+  const td=r['TIME'];if(td)Object.entries(td).forEach(([t,v])=>{const i=document.querySelector(`.time-inp[data-t="${t}"]`);if(i&&v){i.value=v;i.classList.toggle('hv',parseFloat(v)>0);}});
+  uGT();
+  updateSaveBtnState();
+  updateSaveActiveState();
+}
+
+/* ===== VOL ===== */
+function initVol(){
+  $('volUserBadge').textContent=cU.name+'（'+cU.id+'）';
+  volCurEmp=cE;
+  $('volEmpSelLabel').textContent=cE+'　'+(getUsers().find(u=>u.id===cE)?.name||'');
+  if(!isAdminOrManager()){$('volEmpSelBtn').disabled=true;$('volEmpSelBtn').style.opacity='.7';$('volEmpSelBtn').style.cursor='default';}
+  else{$('volEmpSelBtn').disabled=false;$('volEmpSelBtn').style.opacity='1';$('volEmpSelBtn').style.cursor='pointer';}
+  const vd=$('volDate');if(!vd.value)vd.value=cDate||tds();
+  $('volDateLabel').textContent=fd(vd.value);$('mainDateLabel').textContent=fd(cDate||tds());
+  if(!volBuilt){buildVolTables();volBuilt=true;}
+  loadVol();
+}
+
+/*
+  buildVolTables — IDENTICAL approach to bMT():
+  - One <table> per row-group in VOL_ROWS
+  - table-layout:fixed, width:100%
+  - Row 1: .vg header (colspan = tasks.length), sections separated by .vsep
+  - Row 2: .vt task names — NO label column
+  - Row 3: .vi input cells — NO label column
+  ← 数量 label column removed completely
+*/
+function buildVolTables(){
+  const paper=$('volPaper');paper.innerHTML='';
+  VOL_ROWS.forEach(rg=>{
+    const tbl=document.createElement('table');
+    tbl.className='vol-tbl';
+
+    // Row 1: group headers (same as .td-grp in main)
+    const r1=tbl.insertRow();
+    rg.forEach((sec,gi)=>{
+      const h=r1.insertCell();
+      h.colSpan=sec.tasks.length;           // NO +1, no label col
+      h.className='vg'+(gi>0?' vsep':'');
+      h.textContent=sec.label;
+    });
+
+    // Row 2: task names (same as .td-task in main) — NO label cell
+    const r2=tbl.insertRow();
+    rg.forEach((sec,gi)=>{
+      sec.tasks.forEach((t,ti)=>{
+        const c=r2.insertCell();
+        c.className='vt'+(gi>0&&ti===0?' vsep':'');
+        c.textContent=t;
+      });
+    });
+
+    // Row 3: input cells (same as .td-inp in main) — NO label cell
+    const r3=tbl.insertRow();
+    rg.forEach((sec,gi)=>{
+      sec.tasks.forEach((t,ti)=>{
+        const c=r3.insertCell();
+        c.className='vi'+(gi>0&&ti===0?' vsep':'');
+        const inp=document.createElement('input');
+        inp.type='number';inp.min='0';inp.inputMode='numeric';
+        inp.dataset.gid=sec.id;inp.dataset.ti=ti;
+        inp.addEventListener('input',()=>{
+          inp.classList.toggle('filled',inp.value!==''&&inp.value!=='0');
+          // Bật save-active khi có dữ liệu VOL
+          let hasVol=false;
+          $('volPaper').querySelectorAll('input').forEach(vi=>{if(vi.value&&vi.value!=='0')hasVol=true;});
+          const bV=$('bVolSave');if(bV)bV.classList.toggle('save-active',hasVol);
+        });
+        c.appendChild(inp);
+      });
+    });
+
+    paper.appendChild(tbl);
+  });
+}
+
+function loadVol(){
+  const vdate=$('volDate').value;
+  $('volDateLabel').textContent=fd(vdate);
+  const empId=volCurEmp||cU?.id;
+  // Load từ Firebase nếu chưa có cache
+  loadVolKey(empId, vdate).then(()=>{
+    const key=empId+'_'+vdate;
+    const saved=volDb[key]||{};
+    $('volPaper').querySelectorAll('input').forEach(inp=>{
+      inp.value='';inp.classList.remove('filled');const bVr=$('bVolSave');if(bVr)bVr.classList.remove('save-active');
+      const v=saved[inp.dataset.gid]?.[inp.dataset.ti];
+      if(v){inp.value=v;inp.classList.toggle('filled',v!=='0');}
+    });
+    updateVolSaveBtnState();
+    updateVolSaveActiveState();
+  });
+}
+
+function saveVol(){
+  const vdate=$('volDate').value;
+  // Check ngày cũ
+  if(!isAdminOrManager()&&vdate!==tds()){sT('⚠ 過去のデータは変更できません');return;}
+  if(!isAdminOrManager()){
+    const cnt=getSaveCount(volCurEmp||cU.id,vdate,'vol');
+    if(cnt>=MAX_SAVE){sT('⚠ 管理者にデータ変更をご連絡ください');return;}
+  }
+  // Check dữ liệu trống (chỉ với nhân viên thường)
+  if(!isAdminOrManager()){
+    let hasData=false;
+    $('volPaper').querySelectorAll('input').forEach(inp=>{if(inp.value.trim()&&inp.value.trim()!=='0')hasData=true;});
+    if(!hasData){sT('⚠ データが入力されていません');return;}
+  }
+  const key=volCurEmp+'_'+vdate;
+  const data={};
+  $('volPaper').querySelectorAll('input').forEach(inp=>{
+    const v=inp.value.trim();
+    if(v&&v!=='0'){const gid=inp.dataset.gid,ti=inp.dataset.ti;if(!data[gid])data[gid]={};data[gid][ti]=v;}
+  });
+  volDb[key]=data;saveVolDb();
+  if(!isAdminOrManager()){incrementSaveCount(volCurEmp||cU.id,vdate,'vol');updateVolSaveBtnState();}
+  const bVd=$('bVolSave');if(bVd)bVd.classList.remove('save-active');
+  sT('✓ VOLを保存しました（'+fd(vdate)+'）');
+}
+
+function volShiftDate(d){
+  const dt=new Date($('volDate').value+'T00:00:00');dt.setDate(dt.getDate()+d);
+  const fmt=x=>x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
+  $('volDate').value=fmt(dt);loadVol();
+}
+
+function openVolExport(){
+  // Build VOL dept checklist
+  const box=$('vDeptCheckList');box.innerHTML='';
+  const secs=allVolSecs();
+  // Dùng label unique
+  const seen=new Set();
+  secs.forEach(sec=>{
+    if(seen.has(sec.id))return;seen.add(sec.id);
+    const d=document.createElement('div');d.className='di';
+    d.innerHTML=`<input type="checkbox" id="vdc_${sec.id}" checked/><label for="vdc_${sec.id}">${sec.label}</label>`;
+    box.appendChild(d);
+  });
+  $('vDeptCount').textContent=secs.length+'部門';
+  $('vDeptAll').onclick=()=>{box.querySelectorAll('input').forEach(i=>i.checked=true);};
+  $('vDeptNone').onclick=()=>{box.querySelectorAll('input').forEach(i=>i.checked=false);};
+  $('volExportModal').classList.add('on');
+}
+function vExpPeriodChange(){$('vCustomRange').style.display=$('vExpPeriod').value==='custom'?'block':'none';}
+function doVolExport(){
+  const period=$('vExpPeriod').value,vdate=$('volDate').value;
+  const now=new Date();const fmt0=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  // Pre-calc dates để load trước
+  let fromPre,toPre;
+  if(period==='day'){fromPre=toPre=new Date(vdate+'T00:00:00');}
+  else if(period==='week'){const day=now.getDay();fromPre=new Date(now);fromPre.setDate(now.getDate()-(day===0?6:day-1));toPre=new Date(fromPre);toPre.setDate(fromPre.getDate()+6);}
+  else if(period==='month'){fromPre=new Date(now.getFullYear(),now.getMonth(),1);toPre=new Date(now.getFullYear(),now.getMonth()+1,0);}
+  else if(period==='year'){fromPre=new Date(now.getFullYear(),0,1);toPre=new Date(now.getFullYear(),11,31);}
+  else{fromPre=new Date($('vExpFrom').value+'T00:00:00');toPre=new Date($('vExpTo').value+'T00:00:00');}
+  const datesPre=[];const curPre=new Date(fromPre);while(curPre<=toPre){datesPre.push(fmt0(curPre));curPre.setDate(curPre.getDate()+1);}
+  sT('⏳ VOLデータを読み込み中...');
+  const users=getUsers().filter(u=>u.id!=='admin');
+  const loadPromises=[];
+  datesPre.forEach(d=>users.forEach(u=>loadPromises.push(loadVolKey(u.id,d))));
+  Promise.all(loadPromises).then(()=>{
+    _doVolExportCore(period,vdate);
+  });
+}
+function _doVolExportCore(period,vdate){
+  const now=new Date();const fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  let from,to;
+  if(period==='day'){from=to=new Date(vdate+'T00:00:00');}
+  else if(period==='week'){const day=now.getDay();from=new Date(now);from.setDate(now.getDate()-(day===0?6:day-1));to=new Date(from);to.setDate(from.getDate()+6);}
+  else if(period==='month'){from=new Date(now.getFullYear(),now.getMonth(),1);to=new Date(now.getFullYear(),now.getMonth()+1,0);}
+  else if(period==='year'){from=new Date(now.getFullYear(),0,1);to=new Date(now.getFullYear(),11,31);}
+  else{from=new Date($('vExpFrom').value+'T00:00:00');to=new Date($('vExpTo').value+'T00:00:00');}
+  const dates=[];const cur=new Date(from);while(cur<=to){dates.push(fmt(cur));cur.setDate(cur.getDate()+1);}
+  const fromStr=fmt(from),toStr=fmt(to);
+  // 選択された部門のみ
+  const selSecIds=new Set();
+  $('vDeptCheckList').querySelectorAll('input[type=checkbox]').forEach(cb=>{if(cb.checked)selSecIds.add(cb.id.replace('vdc_',''));});
+  const secs=allVolSecs().filter(s=>selSecIds.has(s.id));
+  if(!secs.length){sT('⚠ 部門を選択してください');return;}
+  const users=getUsers().filter(u=>u.id!=='admin');
+  const pl=period==='day'?'日次':period==='week'?'週次':period==='month'?'月次':period==='year'?'年次':'期間';
+  const wb=XLSX.utils.book_new();
+  // Sheet1: 部門別×日付集計
+  const a1=[['ODK VOL — 部門別日付集計'],[`期間: ${fromStr}～${toStr}`],['部門','作業内容',...dates.map(d=>{const dt=new Date(d+'T00:00:00');return(dt.getMonth()+1)+'月'+dt.getDate()+'日（'+DOW[dt.getDay()]+'）'}),'合計']];
+  secs.forEach(sec=>{sec.tasks.forEach((task,ti)=>{const row=[sec.label,task];let total=0;dates.forEach(date=>{let v=0;users.forEach(emp=>{const vv=parseFloat(volDb[emp.id+'_'+date]?.[sec.id]?.[ti]||0);if(!isNaN(vv))v+=vv;});v=Math.round(v*100)/100;row.push(v||'');total+=v;});row.push(Math.round(total*100)/100||'');a1.push(row);});a1.push([]);});
+  const ws1=XLSX.utils.aoa_to_sheet(a1);ws1['!cols']=[{wch:22},{wch:22},...dates.map(()=>({wch:12})),{wch:10}];XLSX.utils.book_append_sheet(wb,ws1,'部門別集計');
+  // Sheet2: 日別詳細
+  const a2=[['ODK VOL — 日別詳細'],[`期間: ${fromStr}～${toStr}`],['日付','曜日','社員番号','社員名','部門','作業内容','数量']];
+  dates.forEach(date=>{users.forEach(emp=>{const saved=volDb[emp.id+'_'+date]||{};secs.forEach(sec=>{sec.tasks.forEach((task,ti)=>{const v=saved[sec.id]?.[ti];if(v&&v!=='0'){const d=new Date(date+'T00:00:00');a2.push([date,DOW[d.getDay()],emp.id,emp.name,sec.label,task,parseFloat(v)]);}});});});});
+  const ws2=XLSX.utils.aoa_to_sheet(a2);ws2['!cols']=[{wch:12},{wch:5},{wch:10},{wch:14},{wch:22},{wch:22},{wch:8}];XLSX.utils.book_append_sheet(wb,ws2,'日別詳細');
+  XLSX.writeFile(wb,`ODK_VOL_${pl}_${fromStr}_${toStr}.xlsx`);sT('✓ VOL Excelをダウンロードしました');CM('volExportModal');
+}
+// end _doVolExportCore
+
+/* 生産性 */
+function openSeisan(){
+  if(cU&&cU._effectiveRole==='odks'){sT('⚠ この機能へのアクセス権がありません');return;}
+  if(!$('seisanDatePick').value)$('seisanDatePick').value=cDate||tds();
+  const seisanDate=$('seisanDatePick').value;
+  $('seisanDateLabel').textContent=fd(seisanDate);
+  const s=$('seisanDept');s.innerHTML='<option value="">-- 部門を選択 --</option>';
+  AG.forEach(g=>{const o=document.createElement('option');o.value=g.id;o.textContent=g.label;s.appendChild(o);});
+  $('seisanContent').innerHTML='<div style="text-align:center;color:#aaa;padding:30px;font-size:11px">部門を選択してください</div>';
+  // Load data ngày này
+  const seisanDate2=$('seisanDatePick').value||tds();
+  Promise.all([
+    loadNippoDateEfficient(seisanDate2),
+    loadVolAllForDate(seisanDate2),
+    loadSeisanDate(seisanDate2)
+  ]).then(()=>{
+    if($('seisanDept').value)buildSeisanTable();
+  });
+  $('seisanModal').classList.add('on');
+  updateSeisanSaveBtnState();
+}
+function buildSeisanTable(){
+  const gid=$('seisanDept').value;
+  if(!gid){$('seisanContent').innerHTML='<div style="text-align:center;color:#aaa;padding:30px;font-size:11px">部門を選択してください</div>';return;}
+  const g=AG.find(x=>x.id===gid);if(!g)return;
+  const seisanDate=$('seisanDatePick')?.value||cDate;
+  const isOld=seisanDate&&seisanDate!==tds()&&!isAdminOrManager();
+
+  let html=`<table class="seisan-tbl" style="width:100%;font-size:11px">
+    <thead><tr>
+      <th style="background:#1a1a1a;color:#fff;padding:6px 10px;text-align:left;border:1px solid #333;min-width:140px">作業内容</th>
+      <th style="background:#4caf50;color:#fff;padding:6px;border:1px solid #333;min-width:100px;text-align:center">VOL合計</th>
+      <th style="background:#2196f3;color:#fff;padding:6px;border:1px solid #333;min-width:100px;text-align:center">MH合計</th>
+      <th style="background:#ff9800;color:#fff;padding:6px;border:1px solid #333;min-width:90px;text-align:center">生産性</th>
+    </tr></thead><tbody>`;
+
+  let sumVol=0,sumMh=0;
+  g.tasks.forEach((task,ti)=>{
+    const vol=calcVolForTask(gid,ti,seisanDate);
+    const mh=calcMhForTask(gid,ti,seisanDate);
+    const seisan=mh>0?(vol/mh).toFixed(2):'—';
+    sumVol+=vol;sumMh+=mh;
+    html+=`<tr>
+      <td style="padding:5px 8px;border:1px solid #ddd;background:#fff;font-weight:600">${task}</td>
+      <td style="border:1px solid #ddd;background:#f1f8e9;text-align:center;padding:5px;font-weight:700;color:#2e7d32;font-size:12px">${vol>0?vol:''}</td>
+      <td style="border:1px solid #ddd;background:#e3f2fd;text-align:center;padding:5px;font-weight:700;color:#1565c0;font-size:12px">${mh>0?mh:''}</td>
+      <td style="border:1px solid #ddd;background:${mh>0?'#fff8e1':'#f5f5f5'};text-align:center;font-weight:900;font-size:13px;color:${mh>0?'#e65100':'#bbb'};padding:5px">${seisan}</td>
+    </tr>`;
+  });
+  sumVol=Math.round(sumVol*100)/100;sumMh=Math.round(sumMh*100)/100;
+  const sumSeisan=sumMh>0?(sumVol/sumMh).toFixed(2):'—';
+  html+=`<tr style="background:#1a1a1a">
+    <td style="padding:6px 8px;color:#fff;font-weight:900;border:1px solid #333">合　計</td>
+    <td style="border:1px solid #333;text-align:center;color:#a5d6a7;font-weight:900;font-size:13px;padding:5px">${sumVol>0?sumVol:''}</td>
+    <td style="border:1px solid #333;text-align:center;color:#90caf9;font-weight:900;font-size:13px;padding:5px">${sumMh>0?sumMh:''}</td>
+    <td style="border:1px solid #333;text-align:center;color:#ffcc80;font-weight:900;font-size:13px;padding:5px">${sumSeisan}</td>
+  </tr>`;
+  html+='</tbody></table>';
+  if(isOld)html+='<div style="margin-top:6px;font-size:9px;color:#aaa;text-align:right">🔒 過去データ（読み取り専用）</div>';
+  $('seisanContent').innerHTML=html;
+}function openTaskPicker(gid,colKey){document.querySelectorAll('.task-picker').forEach(p=>p.classList.remove('open'));if(activePicker===`${gid}_${colKey}`){activePicker=null;return;}const picker=document.getElementById(`tp_${gid}_${colKey}`);if(picker){picker.classList.add('open');activePicker=`${gid}_${colKey}`;}}
+// selectTask removed (auto-calc mode)
+// updateSeisanAuto removed (auto-calc mode)
+function saveSeisan(){
+  // 生産性 is now fully auto-calculated from VOL + 日報 data
+  // No manual save needed
+  sT('ℹ 生産性はVOLと日報から自動計算されます');
+}
+
+function seisanShiftDate(d){
+  const dp=$('seisanDatePick');
+  const dt=new Date((dp.value||tds())+'T00:00:00');dt.setDate(dt.getDate()+d);
+  const fmt=x=>x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
+  dp.value=fmt(dt);seisanDateChanged();
+}
+function seisanDateChanged(){
+  const d=$('seisanDatePick').value;
+  $('seisanDateLabel').textContent=fd(d);
+  updateSeisanSaveBtnState();
+  if($('seisanDept').value){
+    // Load đủ data cho ngày này rồi build table
+    Promise.all([
+      loadNippoDateEfficient(d),
+      loadVolAllForDate(d),
+      loadSeisanDate(d)
+    ]).then(()=>buildSeisanTable());
+  }
+}
+
+/* 生産性 EXCEL EXPORT */
+function openSeisanExport(){
+  const box=$('seDeptCheckList');box.innerHTML='';
+  AG.forEach(g=>{
+    const d=document.createElement('div');d.className='di';
+    d.innerHTML=`<input type="checkbox" id="sedc_${g.id}" checked/><label for="sedc_${g.id}">${g.label}</label>`;
+    box.appendChild(d);
+  });
+  $('seDeptCount').textContent=AG.length+'部門';
+  $('seDeptAll').onclick=()=>{box.querySelectorAll('input').forEach(i=>i.checked=true);};
+  $('seDeptNone').onclick=()=>{box.querySelectorAll('input').forEach(i=>i.checked=false);};
+  $('seisanExportModal').classList.add('on');
+}
+function seExpPeriodChange(){$('seCustomRange').style.display=$('seExpPeriod').value==='custom'?'block':'none';}
+function doSeisanExport(){
+  const period=$('seExpPeriod').value;
+  const now=new Date();const fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  let from,to;
+  if(period==='day'){from=to=new Date(($('seisanDatePick')?.value||cDate||tds())+'T00:00:00');}
+  else if(period==='week'){const day=now.getDay();from=new Date(now);from.setDate(now.getDate()-(day===0?6:day-1));to=new Date(from);to.setDate(from.getDate()+6);}
+  else if(period==='month'){from=new Date(now.getFullYear(),now.getMonth(),1);to=new Date(now.getFullYear(),now.getMonth()+1,0);}
+  else if(period==='year'){from=new Date(now.getFullYear(),0,1);to=new Date(now.getFullYear(),11,31);}
+  else{from=new Date($('seExpFrom').value+'T00:00:00');to=new Date($('seExpTo').value+'T00:00:00');}
+  const dates=[];const cur=new Date(from);while(cur<=to){dates.push(fmt(cur));cur.setDate(cur.getDate()+1);}
+  const fromStr=fmt(from),toStr=fmt(to);
+  // 選択された部門
+  const selGids=new Set();
+  $('seDeptCheckList').querySelectorAll('input[type=checkbox]').forEach(cb=>{if(cb.checked)selGids.add(cb.id.replace('sedc_',''));});
+  const selGroups=AG.filter(g=>selGids.has(g.id));
+  if(!selGroups.length){sT('⚠ 部門を選択してください');return;}
+  const pl=period==='day'?'日次':period==='week'?'週次':period==='month'?'月次':period==='year'?'年次':'期間';
+  const wb=XLSX.utils.book_new();
+  const cols6=['m0','m1','m2','r0','r1','r2'];
+  const colLabels=['目標①','目標②','目標③','結果①','結果②','結果③'];
+  // Sheet: 部門別×日付
+  const a1=[['ODK 生産性 — 部門別集計'],[`期間: ${fromStr}～${toStr}`]];
+  selGroups.forEach(g=>{
+    a1.push([`【${g.label}】`]);
+    a1.push(['日付','曜日',...cols6.map((_,i)=>'作業量('+colLabels[i]+')'),...cols6.map((_,i)=>'必要MH('+colLabels[i]+')'),...cols6.map((_,i)=>'生産性('+colLabels[i]+')')]);
+    dates.forEach(date=>{
+      const saved=seisanDb[date+'_'+g.id]||{};
+      const row=[date];const d2=new Date(date+'T00:00:00');row.push(DOW[d2.getDay()]);
+      cols6.forEach(c=>row.push(parseFloat(saved[c]?.[0]||0)||''));
+      cols6.forEach(c=>row.push(parseFloat(saved[c]?.[1]||0)||''));
+      cols6.forEach(c=>{const v1=parseFloat(saved[c]?.[0]||0),v2=parseFloat(saved[c]?.[1]||0);row.push(v2>0?Math.round(v1/v2*100)/100:'');});
+      a1.push(row);
+    });
+    a1.push([]);
+  });
+  const ws1=XLSX.utils.aoa_to_sheet(a1);XLSX.utils.book_append_sheet(wb,ws1,'部門別集計');
+  XLSX.writeFile(wb,`ODK_生産性_${pl}_${fromStr}_${toStr}.xlsx`);sT('✓ 生産性 Excelをダウンロードしました');CM('seisanExportModal');
+}
+
+
+/* VOL→AG MAPPING: VG id → G id (bộ phận tương ứng) */
+/* VOL_AG_MAP removed - replaced by SEISAN_MAP */
+
+/* Tính tổng VOL cho một bộ phận+task từ tất cả nhân viên trong một ngày */
+function calcVolTotal(volGid,taskIdx,dateStr){
+  const users=getUsers();
+  let total=0;
+  users.forEach(u=>{
+    const key=u.id+'_'+dateStr;
+    const v=parseFloat(volDb[key]?.[volGid]?.[taskIdx]||0);
+    if(!isNaN(v))total+=v;
+  });
+  return Math.round(total*100)/100;
+}
+
+/* Tính tổng MH (giờ làm) từ trang chính cho một bộ phận+task từ tất cả nhân viên */
+function calcMhTotal(gid,taskIdx,dateStr){
+  const users=getUsers();
+  let total=0;
+  users.forEach(u=>{
+    const v=parseFloat(db[u.id]?.[dateStr]?.[gid]?.[taskIdx]||0);
+    if(!isNaN(v))total+=v;
+  });
+  return Math.round(total*100)/100;
+}
+
+/* USER MANAGEMENT */
+function openUserModal(){$('userSearch').value='';userSQ='';renderUserList();$('userModal').classList.add('on');}
+let showArchived=false;
+function toggleArchiveView(){
+  showArchived=!showArchived;
+  $('btnShowArchive').textContent=showArchived?'👥 在籍者':'📦 退職者';
+  $('btnShowArchive').style.background=showArchived?'#388e3c':'';
+  $('btnShowArchive').style.color=showArchived?'#fff':'';
+  renderUserList();
+}
+function renderUserList(){
+  const isAdm=isAdmin();
+  const isMgr=cU&&cU._effectiveRole==='manager';
+  const allUsers=getUsers().filter(u=>{
+    if(u.id==='admin')return false; // ẩn tài khoản admin khỏi danh sách
+    if(u.role==='superadmin')return false; // ẩn superadmin
+    if(isMgr&&u.role==='manager')return false;
+    return true;
+  });
+  // Lọc theo trạng thái archive
+  const users=allUsers.filter(u=>showArchived ? u.archived===true : u.archived!==true)
+    .sort((a,b)=>a.id.localeCompare(b.id));
+  const q=userSQ.toLowerCase();
+  const filtered=users.filter(u=>!q||u.name.toLowerCase().includes(q)||u.id.toLowerCase().includes(q));
+  const totalActive=allUsers.filter(u=>u.archived!==true).length;
+  const totalArchived=allUsers.filter(u=>u.archived===true).length;
+  $('userCount').textContent=showArchived
+    ?`退職者 ${filtered.length}名`
+    :`${filtered.length}名在籍 / 退職${totalArchived}名`;
+  if(!filtered.length){
+    $('userListWrap').innerHTML=`<div style="text-align:center;padding:20px;color:#aaa">${showArchived?'退職者なし':'在籍者なし'}</div>`;
+    return;
+  }
+  let html='<table class="utbl"><thead><tr><th>社員番号</th><th>名前</th><th>権限</th><th>操作</th></tr></thead><tbody>';
+  filtered.forEach(u=>{
+    const mustBadge=!showArchived&&u.mustChangePwd?'<span class="must-change-badge">初回未変更</span>':'';
+    const archiveBadge=showArchived?'<span class="archived-badge">退職</span>':'';
+    const roleBadge=u.role==='manager'
+      ?'<span class="badge badge-admin">🔑 管理者</span>'
+      :u.role==='odks'
+        ?'<span class="badge" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9">🔵 ODKS籍</span>'
+        :'<span class="badge badge-emp">🟢 ODK籍</span>';
+    const canEdit=isAdminOrManager()&&(isSuperAdmin()||u.role!=='manager')&&(isSuperAdmin()||u.role!=='admin')&&(isSuperAdmin()||u.role!=='superadmin');
+    let actionBtns='<span style="color:#aaa;font-size:9px">—</span>';
+    if(canEdit){
+      if(showArchived){
+        // Chế độ xem lưu trữ: chỉ có nút Phục hồi
+        const canHardDel=isAdmin();
+        actionBtns=`<div class="act-btns"><button class="btn-sm btn-sm-restore" onclick="quickRestoreUser('${u.id}')">↩ 復職</button>${canHardDel?`<button class="btn-sm btn-sm-del" onclick="openDelUser('${u.id}')">🗑 削除</button>`:''}</div>`;
+      } else {
+        // Chế độ bình thường: Sửa + Archive
+        actionBtns=`<div class="act-btns"><button class="btn-sm btn-sm-edit" onclick="openEditUser('${u.id}')">✏ 編集</button><button class="btn-sm btn-sm-archive" onclick="openDelUser('${u.id}')">📦 退職</button></div>`;
+      }
+    }
+    const rowClass=showArchived?'class="archived-row"':'';
+    html+=`<tr ${rowClass}><td style="font-family:monospace;color:#555">${u.id}</td><td style="font-weight:600">${u.name}${mustBadge}${archiveBadge}</td><td>${roleBadge}</td><td>${actionBtns}</td></tr>`;
+  });
+  $('userListWrap').innerHTML=html+'</tbody></table>';
+}
+function openAddUser(){
+  editingId=null;selectedRole='emp';
+  $('editUserTitle').textContent='＋ 新規社員追加';
+  $('euId').value='';$('euId').disabled=false;$('euName').value='';
+  $('euPwd').value='';$('euPwd').type='password';
+  const b=$('editUserModal').querySelector('.pw-show-btn');if(b)b.textContent='👁';
+  $('euIdHint').textContent='';$('euPwdHint').textContent='';
+  $('pwRequired').style.display='inline';$('delUserBtn').style.display='none';
+  $('curPwdDisplay').style.display='none';$('mustChangePwdRow').style.display='block';$('mustChangePwdChk').checked=true;
+  // Hiện/ẩn card theo quyền người dùng hiện tại
+  if($('rcOdks'))$('rcOdks').style.display='flex'; // luôn hiện ODKS籍
+  if($('rcManager'))$('rcManager').style.display=isAdmin()?'flex':'none';
+  if($('rcAdmin'))$('rcAdmin').style.display=isSuperAdmin()?'flex':'none';
+  // Mặc định chọn ODK籍
+  selectedRole='emp';selectRole('emp');
+  selectRole('emp');$('editUserModal').classList.add('on');setTimeout(()=>$('euId').focus(),100);
+}
+function openEditUser(id){const u=getUsers().find(u=>u.id===id);if(!u)return;editingId=id;selectedRole=u.role;$('editUserTitle').textContent='✏ 編集：'+u.name;$('euId').value=u.id;$('euId').disabled=true;$('euName').value=u.name;$('euPwd').value='';$('euPwd').type='password';const b=$('editUserModal').querySelector('.pw-show-btn');if(b)b.textContent='👁';$('euIdHint').textContent='';$('euPwdHint').textContent='空欄のままで変更なし';$('pwRequired').style.display='none';$('delUserBtn').style.display='none';
+// Show current password for admin
+$('curPwdDisplay').style.display='block';
+$('curPwdVal').textContent='••••••';$('curPwdVal').dataset.pwd=u.pwd;$('curPwdVal').dataset.shown='0';$('curPwdToggle').textContent='👁';
+// mustChangePwd checkbox
+$('mustChangePwdRow').style.display='block';$('mustChangePwdChk').checked=!!u.mustChangePwd;
+  if($('rcOdks'))$('rcOdks').style.display='flex';
+  if($('rcManager'))$('rcManager').style.display=isAdminOrManager()?'flex':'none';
+  if($('rcAdmin'))$('rcAdmin').style.display=isSuperAdmin()?'flex':'none';
+  // Map effective role về role để hiện đúng card
+  const displayRole=u.role||'emp';
+  selectRole(displayRole);$('editUserModal').classList.add('on');}
+function openDelUser(id){
+  const u=getUsers().find(u=>u.id===id);if(!u)return;
+  editingId=id;selectedRole=u.role;
+  $('editUserTitle').textContent=(u.archived?'📦 退職済み：':'📦 退職処理：')+u.name;
+  $('euId').value=u.id;$('euId').disabled=true;
+  $('euName').value=u.name;$('euPwd').value='';$('euPwd').type='password';
+  $('euPwdHint').textContent='';$('pwRequired').style.display='none';
+  // 退職処理ボタン: 在籍者のみ
+  $('delUserBtn').style.display=u.archived?'none':'inline-block';
+  // 完全削除ボタン: 常に表示（admin のみ）
+  $('hardDelBtn').style.display=isSuperAdmin()?'inline-block':(isAdmin()&&u.role!=='admin'?'inline-block':'none');
+  $('restoreUserBtn').style.display=u.archived?'inline-block':'none';
+  $('curPwdDisplay').style.display='none';$('mustChangePwdRow').style.display='none';
+  selectRole(u.role);$('editUserModal').classList.add('on');
+}
+function saveUser(){
+  const id=editingId||$('euId').value.trim(),name=$('euName').value.trim(),pwd=$('euPwd').value;
+  if(!id){sT('⚠ 社員番号を入力してください');return;}if(!name){sT('⚠ 名前を入力してください');return;}
+  const users=getUsers();
+  if(!editingId){if(!pwd){sT('⚠ パスワードを入力してください');return;}if(users.find(u=>u.id===id)){$('euIdHint').textContent='⚠ このIDは既に使用されています';$('euIdHint').style.color='#c62828';return;}const safeRole=isSuperAdmin()?selectedRole:(isAdmin()&&selectedRole!=='admin'&&selectedRole!=='superadmin'?selectedRole:(selectedRole==='odks'?'odks':'emp'));const mustChange=$('mustChangePwdChk').checked;users.push({id,name,pwd,role:safeRole,mustChangePwd:mustChange});saveUsers(users);sT('✓ '+name+'を追加しました');}
+  else{const idx=users.findIndex(u=>u.id===editingId);if(idx<0)return;users[idx].name=name;users[idx].role=selectedRole;if(pwd){users[idx].pwd=pwd;}users[idx].mustChangePwd=$('mustChangePwdChk').checked;saveUsers(users);sT('✓ '+name+'を更新しました');}
+  CM('editUserModal');renderUserList();if(empDropOpen)buildEmpDrop($('empDropSearch').value);if(volEmpDropOpen)buildVolEmpDrop($('volEmpDropSearch').value);
+}
+function confirmArchiveUser(){
+  const users=getUsers(),u=users.find(u=>u.id===editingId);
+  if(!u)return;
+  if(editingId==='admin'){sT('⚠ 処理できません');return;}
+  if(isManager()&&u.role==='manager'){sT('⚠ 他の管理者を処理できません');return;}
+  if(!confirm(`「${u.name}（${u.id}）」を退職処理しますか？\nデータは保持されます。`))return;
+  const idx=users.findIndex(u=>u.id===editingId);
+  users[idx].archived=true;
+  users[idx].archivedDate=tds();
+  saveUsers(users);
+  sT('✓ 退職処理しました（データは保持されます）');
+  CM('editUserModal');renderUserList();
+}
+function confirmRestoreUser(){
+  const users=getUsers(),u=users.find(u=>u.id===editingId);
+  if(!u)return;
+  const idx=users.findIndex(u=>u.id===editingId);
+  users[idx].archived=false;
+  delete users[idx].archivedDate;
+  saveUsers(users);
+  sT('✓ '+u.name+'を復職しました');
+  CM('editUserModal');renderUserList();
+}
+function confirmHardDelete(){
+  const users=getUsers(),u=users.find(u=>u.id===editingId);
+  if(!u)return;
+  if(editingId==='admin'){sT('⚠ 削除できません');return;}
+  if(!confirm(`「${u.name}（${u.id}）」を完全に削除しますか？\n\n⚠ この操作は元に戻せません。\n入力済みの日報・VOLデータは残ります。`))return;
+  saveUsers(users.filter(u=>u.id!==editingId));
+  sT('✓ 完全削除しました');
+  CM('editUserModal');renderUserList();
+}
+function quickRestoreUser(id){
+  const users=getUsers(),idx=users.findIndex(u=>u.id===id);
+  if(idx<0)return;
+  if(!confirm(`「${users[idx].name}」を復職しますか？`))return;
+  users[idx].archived=false;delete users[idx].archivedDate;
+  saveUsers(users);sT('✓ 復職しました');renderUserList();
+}
+
+/* TABLE BUILD */
+function bMT(){
+  const w=$('tw');w.innerHTML='';let n=1;
+  RL.forEach(rg=>{
+    const t=document.createElement('table');t.className='sheet';
+    let h='<tr>';rg.forEach((g,gi)=>{h+=`<td class="td-grp${gi<rg.length-1?' sep-r':''}" colspan="${g.tasks.length}">${g.label}</td>`});
+    h+='</tr><tr>';rg.forEach((g,gi)=>{g.tasks.forEach((tk,ti)=>{h+=`<td class="td-task${gi<rg.length-1&&ti===g.tasks.length-1?' sep-t':''}" title="${tk}">${tk}</td>`})});
+    h+='</tr><tr>';rg.forEach((g,gi)=>{g.tasks.forEach((_,ti)=>{h+=`<td class="td-no${gi<rg.length-1&&ti===g.tasks.length-1?' sep-t':''}">${n++}</td>`})});
+    h+='</tr><tr>';rg.forEach((g,gi)=>{g.tasks.forEach((_,ti)=>{h+=`<td class="td-inp${gi<rg.length-1&&ti===g.tasks.length-1?' sep-t':''}"><input class="inp all-inp grp-inp" type="text" inputmode="decimal" maxlength="6" data-g="${g.id}" data-t="${ti}"/></td>`})});
+    h+='</tr>';t.innerHTML=h;t.querySelectorAll('.grp-inp').forEach(ai);w.appendChild(t);
+  });
+}
+function bTT(){
+  let rH='';HR.forEach((h,hi)=>{rH+=`<th colspan="4" style="border:1px solid #ddd;${hi<HR.length-1?'border-right:2px solid #ccc':''}">${h}</th>`});
+  rH+=`<th rowspan="2" class="td-grand-hd">☆労働時間計（休憩除く）</th>`;$('tHR').innerHTML=rH;
+  let rM='';HR.forEach((_,hi)=>{MN.forEach((m,mi)=>{rM+=`<th style="border:1px solid #e0e0e0;${mi===MN.length-1&&hi<HR.length-1?'border-right:2px solid #ccc':''}">${m}</th>`})});$('tMR').innerHTML=rM;
+  let rD='';HR.forEach((_,hi)=>{MN.forEach((_,mi)=>{rD+=`<td style="${mi===MN.length-1&&hi<HR.length-1?'border-right:2px solid #ccc':''}"><input class="inp all-inp time-inp" type="text" inputmode="decimal" maxlength="5" data-g="TIME" data-t="${hi*4+mi}"/></td>`})});
+  rD+=`<td class="td-grand-val" id="gT">0 mh</td>`;$('tDR').innerHTML=rD;document.querySelectorAll('.time-inp').forEach(ai);
+}
+const vl=s=>{if(s===''||s===null)return true;const n=parseFloat(s);return !isNaN(n)&&n>=0&&/^\d+(\.\d{1,2})?$/.test(s.trim())};
+function oI(i){
+  const v=i.value.trim(),ok=vl(v);
+  i.classList.toggle('bad',!ok);
+  i.classList.toggle('hv',ok&&v!==''&&v!=='0');
+  if(ok){uGT();updateSaveActiveState();}
+}
+function updateSaveActiveState(){
+  let hasAny=false;
+  document.querySelectorAll('.all-inp').forEach(i=>{
+    const v=parseFloat(i.value);if(!isNaN(v)&&v>0)hasAny=true;
+  });
+  const bS=$('bSave'),bS2=$('bSave2');
+  if(bS){bS.classList.toggle('save-active',hasAny);}
+  if(bS2){bS2.classList.toggle('save-active',hasAny);}
+}
+function updateVolSaveActiveState(){
+  let hasAny=false;
+  const paper=$('volPaper');
+  if(paper)paper.querySelectorAll('input').forEach(i=>{if(i.value.trim()&&i.value.trim()!=='0')hasAny=true;});
+  const bV=$('bVolSave');
+  if(bV){bV.classList.toggle('save-active',hasAny);}
+}
+function oB(i){if(!vl(i.value.trim()))return;const n=parseFloat(i.value);if(!isNaN(n)){i.value=n%1===0?String(n):n.toFixed(2).replace(/0+$/,'').replace(/\.$/,'');i.classList.toggle('hv',i.value!==''&&i.value!=='0');uGT();}}
+function uGT(){let s=0;document.querySelectorAll('.all-inp').forEach(i=>{if(i.classList.contains('bad'))return;const v=parseFloat(i.value);if(!isNaN(v)&&v>0)s+=v});const e=$('gT');if(e)e.textContent=s>0?s.toFixed(2).replace(/\.00$/,'')+' mh':'0 mh';}
+
+/* EXPORT 日報 */
+function getDateRange(p){
+  const now=new Date();let from,to;
+  if(p==='day'){from=to=new Date((cDate||tds())+'T00:00:00');}
+  else if(p==='week'){const d=now.getDay();from=new Date(now);from.setDate(now.getDate()-(d===0?6:d-1));to=new Date(from);to.setDate(from.getDate()+6);}
+  else if(p==='month'){from=new Date(now.getFullYear(),now.getMonth(),1);to=new Date(now.getFullYear(),now.getMonth()+1,0);}
+  else if(p==='year'){from=new Date(now.getFullYear(),0,1);to=new Date(now.getFullYear(),11,31);}
+  else{from=new Date($('expFrom').value+'T00:00:00');to=new Date($('expTo').value+'T00:00:00');}
+  const fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const dates=[];let cur=new Date(from);while(cur<=to){dates.push(fmt(cur));cur.setDate(cur.getDate()+1);}
+  return{dates,fromStr:fmt(from),toStr:fmt(to)};
+}
+function gSN(gid){let n=1;for(const g of AG){if(g.id===gid)return n;n+=g.tasks.length;}return n;}
+function gV(eid,date,gid,ti){return parseFloat(db[eid]?.[date]?.[gid]?.[ti]||0)||0;}
+function reloadExportData(){
+  // Xóa cache của khoảng ngày hiện tại để load lại từ Firebase
+  const {dates}=getDateRange($('expPeriod').value);
+  dates.forEach(d=>loadedDates.delete(d));
+  sT('⏳ データを再読み込み中...');
+  Promise.all(dates.map(d=>loadNippoDateEfficient(d))).then(()=>{
+    renderExportEmpList();
+    sT('✓ データを更新しました');
+  });
+}
+function openExportModal(){
+  if(cU&&(cU._effectiveRole==='odks')){sT('⚠ この機能へのアクセス権がありません');return;}
+  selEmps=new Set();
+  selDepts=new Set(AG.map(g=>g.id));
+  expEmpSQ='';
+  buildDeptCheckList();
+  renderExportEmpList();
+  $('exportModal').classList.add('on');
+}
+function expPeriodChange(){$('customRange').style.display=$('expPeriod').value==='custom'?'block':'none';renderExportEmpList();}
+function buildDeptCheckList(){
+  const box=$('deptCheckList');box.innerHTML='';
+  AG.forEach(g=>{
+    const d=document.createElement('div');d.className='di';
+    d.innerHTML=`<input type="checkbox" id="dc_${g.id}" ${selDepts.has(g.id)?'checked':''}/><label for="dc_${g.id}">${g.label}</label>`;
+    d.querySelector('input').addEventListener('change',e=>{
+      if(e.target.checked)selDepts.add(g.id);
+      else selDepts.delete(g.id);
+      $('deptCount').textContent=selDepts.size+'部門';
+      // Khi thay đổi bộ phận → cập nhật lại danh sách nhân viên
+      renderExportEmpList();
+    });
+    box.appendChild(d);
+  });
+  $('deptCount').textContent=selDepts.size+'部門';
+}
+function renderExportEmpList(){
+  const {dates}=getDateRange($('expPeriod').value);
+  const sDI=[...selDepts];
+  const allUsers=getUsers().filter(u=>u.id!=='admin'&&u.archived!==true).sort((a,b)=>a.id.localeCompare(b.id));
+
+  // Lọc nhân viên có nhập dữ liệu trong bộ phận đã chọn + kỳ đã chọn
+  const usersWithData=sDI.length===0
+    ? []
+    : allUsers.filter(emp=>{
+        // Kiểm tra xem nhân viên này có ít nhất 1 ô dữ liệu trong bộ phận đã chọn không
+        return dates.some(date=>
+          sDI.some(gid=>{
+            const gData=db[emp.id]?.[date]?.[gid];
+            if(!gData)return false;
+            return Object.values(gData).some(v=>parseFloat(v)>0);
+          })
+        );
+      });
+
+  // Tự động chọn tất cả nhân viên có data
+  selEmps=new Set(usersWithData.map(u=>u.id));
+
+  const q=expEmpSQ.toLowerCase();
+  const filtered=usersWithData.filter(e=>!q||e.name.toLowerCase().includes(q)||e.id.toLowerCase().includes(q));
+  const box=$('empCheckList');box.innerHTML='';
+
+  if(sDI.length===0){
+    box.innerHTML='<div style="padding:10px;text-align:center;color:#aaa;font-size:10px">部門を選択してください</div>';
+    $('empCount').textContent='0名';
+    return;
+  }
+  if(!filtered.length){
+    box.innerHTML='<div style="padding:10px;text-align:center;color:#aaa;font-size:10px">選択期間・部門にデータがありません</div>';
+    $('empCount').textContent='0名';
+    return;
+  }
+
+  filtered.forEach(e=>{
+    const d=document.createElement('div');d.className='ei';
+    d.innerHTML=`<input type="checkbox" id="ec_${e.id}" ${selEmps.has(e.id)?'checked':''}/><label for="ec_${e.id}"><span style="font-family:monospace;color:#aaa;font-size:9px">${e.id}</span> ${e.name}</label>`;
+    d.querySelector('input').addEventListener('change',ev=>{
+      if(ev.target.checked)selEmps.add(e.id);
+      else selEmps.delete(e.id);
+      $('empCount').textContent=selEmps.size+'名選択中';
+    });
+    box.appendChild(d);
+  });
+  $('empCount').textContent=filtered.length+'名選択中';
+}
+function doExcelExport(){
+  const p=$('expPeriod').value;const{dates,fromStr,toStr}=getDateRange(p);
+  // Load tất cả ngày trong khoảng trước khi xuất
+  sT('⏳ データを読み込み中...');
+  Promise.all(dates.map(d=>loadNippoDateEfficient(d))).then(()=>{
+    _doExcelExportCore(p,dates,fromStr,toStr);
+  });
+}
+function _doExcelExportCore(p,dates,fromStr,toStr){const users=getUsers().filter(u=>u.id!=='admin');const sE=users.filter(e=>selEmps.has(e.id));const sDI=[...selDepts];
+  if(!sE.length){sT('⚠ 社員を選択してください');return;}if(!sDI.length){sT('⚠ 部門を選択してください');return;}
+  const wb=XLSX.utils.book_new();const pl=p==='day'?'日次':p==='week'?'週次':p==='month'?'月次':p==='year'?'年次':'期間';
+  const a1=[];a1.push(['ODK日報-部門別集計'],[`期間:${fromStr}～${toStr}`],[`社員:${sE.length}名`],[]);
+  AG.filter(g=>sDI.includes(g.id)).forEach(g=>{a1.push([`【${g.label}】`]);a1.push(['No.','作業内容',...sE.map(e=>e.name+'('+e.id+')'),'合計(mh)']);const sn=gSN(g.id),gt=sE.map(()=>0);let gT=0;g.tasks.forEach((t,ti)=>{const row=[sn+ti,t];let rt=0;sE.forEach((e,ei)=>{let v=0;dates.forEach(d=>{v+=gV(e.id,d,g.id,ti)});v=Math.round(v*100)/100;row.push(v||'');rt+=v;gt[ei]+=v;});rt=Math.round(rt*100)/100;row.push(rt||'');gT+=rt;a1.push(row);});a1.push(['','【小計】',...gt.map(v=>Math.round(v*100)/100||''),Math.round(gT*100)/100||'']);a1.push([]);});
+  const ws1=XLSX.utils.aoa_to_sheet(a1);ws1['!cols']=[{wch:6},{wch:22},...sE.map(()=>({wch:14})),{wch:10}];XLSX.utils.book_append_sheet(wb,ws1,'部門別集計');
+  const a2=[];a2.push(['ODK日報-社員別集計'],[`期間:${fromStr}～${toStr}`],[]);sE.forEach(emp=>{a2.push([`【${emp.name}（${emp.id}）】`]);a2.push(['部門','No.','作業内容','合計(mh)']);let eT=0;AG.filter(g=>sDI.includes(g.id)).forEach(g=>{g.tasks.forEach((t,ti)=>{let v=0;dates.forEach(d=>{v+=gV(emp.id,d,g.id,ti)});v=Math.round(v*100)/100;if(v>0){a2.push([g.label,gSN(g.id)+ti,t,v]);eT+=v;}});});a2.push(['','','【合計】',Math.round(eT*100)/100]);a2.push([]);});
+  const ws2=XLSX.utils.aoa_to_sheet(a2);ws2['!cols']=[{wch:20},{wch:6},{wch:22},{wch:10}];XLSX.utils.book_append_sheet(wb,ws2,'社員別集計');
+  XLSX.writeFile(wb,`ODK日報_${pl}_${fromStr}_${toStr}.xlsx`);sT('✓ Excelをダウンロードしました');CM('exportModal');
+}
+// end _doExcelExportCore
+
+function toggleCurPwd(){
+  const val=$('curPwdVal'),btn=$('curPwdToggle');
+  if(val.dataset.shown==='1'){val.textContent='••••••';val.dataset.shown='0';btn.textContent='👁';}
+  else{val.textContent=val.dataset.pwd;val.dataset.shown='1';btn.textContent='🙈';}
+}
+
+function submitChangePwd(){
+  const np=$('cpwdNew').value,cp=$('cpwdConfirm').value,err=$('cpwdErr');
+  if(!np){err.textContent='新しいパスワードを入力してください';err.style.display='block';return;}
+  if(np.length<4){err.textContent='パスワードは4文字以上にしてください';err.style.display='block';return;}
+  if(np!==cp){err.textContent='パスワードが一致しません';err.style.display='block';return;}
+  const users=getUsers(),idx=users.findIndex(u=>u.id===cU.id);
+  if(idx<0)return;
+  users[idx].pwd=np;users[idx].mustChangePwd=false;
+  cU.pwd=np;cU.mustChangePwd=false;
+  saveUsers(users);
+  $('cpwdModal').style.display='none';
+  sT('✓ パスワードを変更しました');
+}
+
+function forceRefreshToday(){
+  const today=tds();
+  loadedDates.delete(today);
+  loadedVolKeys.forEach((k,_)=>{if(k.endsWith('_'+today))loadedVolKeys.delete(k);});
+  sT('🔄 データを更新中...');
+  loadNippoDateEfficient(today).then(()=>{
+    loadedDates.delete(today);
+    if(cU){lS();sT('✓ データを更新しました');}
+  });
+}
+
+function restoreSession(){
+  try{
+    const s=sessionStorage.getItem('odk_session_v1');
+    if(!s)return;
+    const {id,pwd}=JSON.parse(s);
+    const u=getUsers().find(u=>u.id===id&&u.pwd===pwd);
+    if(!u)return;
+    // Khôi phục đăng nhập
+    cU=u;
+    cU._effectiveRole=getEffectiveRole(u);
+    $('loginScreen').style.display='none';
+    $('tbUser').textContent=u.name+'（'+u.id+'）';
+    const affil=$('tbAffil');
+    if(cU._effectiveRole==='odks'){affil.textContent='ODKS籍';affil.className='tb-affil tb-affil-odks';affil.style.display='block';}
+    else if(cU._effectiveRole==='emp'){affil.textContent='ODK籍';affil.className='tb-affil tb-affil-odk';affil.style.display='block';}
+    else if(cU._effectiveRole==='manager'){affil.textContent='管理者';affil.className='tb-affil tb-affil-admin';affil.style.display='block';}
+    else if(cU._effectiveRole==='superadmin'){affil.textContent='ADMIN';affil.className='tb-affil tb-affil-admin';affil.style.display='block';}
+    else if(cU._effectiveRole==='admin'){affil.textContent='ADMIN';affil.className='tb-affil tb-affil-admin';affil.style.display='block';}
+    $('bUsers').style.display=isAdminOrManager()?'inline-block':'none';
+    const isOdks=cU._effectiveRole==='odks';
+    $('bVol').style.display=isOdks?'none':'inline-block';
+    $('bSeisan').style.display=isOdks?'none':'inline-block';
+    $('bExcel').style.display=isOdks?'none':'inline-block';
+    if(!isAdminOrManager()){
+      if(!isAdminOrManager()){$('empSelBtn').disabled=true;$('empSelBtn').style.opacity='.7';$('empSelBtn').style.cursor='default';}
+    }
+    cDate=tds();cE=u.id;$('datePick').value=cDate;
+    $('empSelLabel').textContent=u.id+'　'+u.name;
+    updateEmpTypeLabel(u.id);
+    showPage('main');bMT();bTT();
+    document.querySelectorAll('.all-inp').forEach(ai);
+    lS();
+    $('mainDateLabel').textContent=fd(cDate);
+  }catch(e){
+    sessionStorage.removeItem('odk_session_v1');
+  }
+}
+
+let _t=null;
+function sT(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(_t);_t=setTimeout(()=>t.classList.remove('on'),3000)}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  initFirebaseListeners();
+  restoreSession();
+  $('lbtn').addEventListener('click',doLogin);
+  $('lpwd').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+  $('bSave').addEventListener('click',doSave);$('bSave2').addEventListener('click',doSave);
+  $('bPrint').addEventListener('click',()=>window.print());$('bOut').addEventListener('click',doLogout);
+  $('datePick').addEventListener('change',()=>{
+    cDate=$('datePick').value;
+    loadedDates.delete(cDate); // Luôn force reload khi đổi ngày
+    loadNippoDateEfficient(cDate).then(()=>{
+      loadedDates.delete(cDate);
+      lS();
+    });
+  });
+  $('bVol').addEventListener('click',()=>showPage('vol'));
+  $('bSeisan').addEventListener('click',openSeisan);
+  $('bExcel').addEventListener('click',openExportModal);
+  $('bUsers').addEventListener('click',openUserModal);
+  $('empSelBtn').addEventListener('click',e=>{if(cU&&!isAdminOrManager())return;e.stopPropagation();if(empDropOpen)closeEmpDrop();else openEmpDrop();});
+  $('empDropSearch').addEventListener('input',()=>buildEmpDrop($('empDropSearch').value));
+  $('volEmpSelBtn').addEventListener('click',e=>{if(cU&&!isAdminOrManager())return;e.stopPropagation();if(volEmpDropOpen)closeVolEmpDrop();else openVolEmpDrop();});
+  $('volEmpDropSearch').addEventListener('input',()=>buildVolEmpDrop($('volEmpDropSearch').value));
+  $('userSearch').addEventListener('input',()=>{userSQ=$('userSearch').value;renderUserList()});
+  $('euId').addEventListener('input',()=>{if(editingId)return;const v=$('euId').value.trim();const users=getUsers();if(v&&users.find(u=>u.id===v)){$('euIdHint').textContent='⚠ このIDは既に使用されています';$('euIdHint').style.color='#c62828';}else{$('euIdHint').textContent=v?'✓ 使用可能':'';$('euIdHint').style.color='#2e7d32';}});
+  // expPeriod change handled by expPeriodChange() inline
+  $('vExpPeriod').addEventListener('change',()=>{$('vCustomRange').style.display=$('vExpPeriod').value==='custom'?'block':'none'});
+  $('expEmpSearch').addEventListener('input',()=>{expEmpSQ=$('expEmpSearch').value;renderExportEmpList()});
+  $('empSelAll').addEventListener('click',()=>{$('empCheckList').querySelectorAll('input[type=checkbox]').forEach(cb=>{cb.checked=true;selEmps.add(cb.id.replace('ec_',''));});$('empCount').textContent=selEmps.size+'名選択中';});
+  $('empSelNone').addEventListener('click',()=>{$('empCheckList').querySelectorAll('input[type=checkbox]').forEach(cb=>{cb.checked=false;});selEmps.clear();$('empCount').textContent='0名選択中';});
+  $('deptAll').addEventListener('click',()=>{AG.forEach(g=>selDepts.add(g.id));buildDeptCheckList();renderExportEmpList();});
+  $('deptNone').addEventListener('click',()=>{selDepts.clear();buildDeptCheckList();renderExportEmpList();});
+  $('doExport').addEventListener('click',doExcelExport);
+  document.querySelectorAll('.modal-bg').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('on')});});
+  document.addEventListener('click',e=>{
+    if(empDropOpen&&!$('empSelWrap').contains(e.target))closeEmpDrop();
+    if(volEmpDropOpen&&!$('volEmpSelWrap').contains(e.target))closeVolEmpDrop();
+    if(activePicker&&!e.target.closest('.sc-th-blue')&&!e.target.closest('.sc-th-pink')&&!e.target.closest('.task-picker')){document.querySelectorAll('.task-picker').forEach(p=>p.classList.remove('open'));activePicker=null;}
+  });
+});
+</script>
+</body>
+</html>
